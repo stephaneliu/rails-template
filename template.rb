@@ -1,6 +1,8 @@
-gem 'devise'
 gem 'bootstrap', '~>4.0.0'
+gem 'devise'
+gem 'font-awesome-rails'
 gem 'haml-rails'
+gem 'jquery-rails'
 gem 'pg'
 gem 'rack-timeout'
 
