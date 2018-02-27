@@ -416,7 +416,7 @@ generator_configs = <<-EOL
       g.helper              false
       g.test_framework      :rspec, fixture: true
       g.view_specs          false
-      g.fixture_replacement :factory_girl, dir: "spec/factories"
+      g.fixture_replacement :factory_bot, dir: "spec/factories"
       g.helper              false
       g.template_engine     :haml
       g.stylesheets         false
