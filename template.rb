@@ -39,7 +39,7 @@ gem_group :test do
   gem 'capybara', '~> 2.13'
   gem 'factory_bot_rails'
   gem 'faker'
-  gem 'rspec_junit_formatter'
+  gem 'rspec_junit_formatter' # translate for circle-ci
   gem 'pry-rails'
   gem 'rspec-rails'
   gem 'selenium-webdriver' # system test using selenium_chrome_headless
