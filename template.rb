@@ -57,7 +57,7 @@ generate 'annotate:install'
 pronto_config = <<-EOL
 verbose: false
 EOL
-create_file ".pronto.yml"
+create_file ".pronto.yml", pronto_config
 
 simplecov_config = <<-EOL
 require 'simplecov'
