@@ -258,6 +258,7 @@ append_to_file '.gitignore' do
 <<-EOL
 ./coverage
 ./.env
+./config/initializers/*
 EOL
 end
 
@@ -311,77 +312,6 @@ Style/StringLiterals:
     - 'Guardfile'
 EOL
 create_file ".rubocop.yml", rubocop_config
-
-circleci_config = <<-EOL
-# Ruby CircleCI 2.0 configuration file
-# Check https://circleci.com/docs/2.0/language-ruby/ for more details
-
-version: 2
-jobs:
-  build:
-    docker:
-      # specify the version you desire here
-      - image: circleci/ruby:2.4.1-node-browsers
-        environment:
-          PG_HOST: localhost
-          PGUSER: #{app_name}
-          RAILS_ENV: test
-      - image: circleci/postgres:9.5-alpine
-        environment:  
-          POSTGRES_USER: #{app_name}
-          POSTGRES_DB: #{app_name}_test
-          POSTGRES_PASSWORD: ''
-
-    working_directory: ~/#{app_name}
-
-    steps:
-      - checkout
-
-      # Download and cache dependencies
-      - restore_cache:
-          keys:
-            - v1-dependencies-{{ checksum "Gemfile.lock" }}
-            # fallback to using the latest cache if no exact match is found
-            - v1-dependencies-
-
-      - run:
-          name: install dependencies
-          command: |
-            bundle install --without=development --jobs=4 --retry=3 --path vendor/bundle
-
-      - save_cache:
-          paths: 
-            - ./vendor/bundle
-          key: v1-dependencies-{{ checksum "Gemfile.lock" }}
-
-      # Wait for DB
-      - run: dockerize -wait tcp://localhost:5432 -timeout 1m
-
-      # Database setup
-      - run: bundle exec rake db:create 
-      - run: bundle exec rake db:schema:load
-
-      # run tests!
-      - run: 
-          name: run tests
-          command: | 
-            mkdir /tmp/test-results
-            TEST_FILES="$(circleci tests glob "spec/**/*_spec.rb" | circleci tests split --split-by=timings)"
-    
-            bundle exec rspec \\
-              --format progress \\
-              --format RspecJunitFormatter \\
-              --out tmp/test-results/rspec.xml \\
-              $TEST_FILES
-
-      # collect reports
-      - store_test_results:
-          path: /tmp/test-results
-      - store_artifacts:
-          path: /tmp/test-results
-          destination: test-results
-EOL
-create_file '.circleci/config.yml', circleci_config
 
 create_file 'README'
 
@@ -468,7 +398,7 @@ test:
 #
 production:
   <<: *default
-  database: notonline_production
+  database: notonline_productionj
   password: <%= ENV['#{app_name}_DATABASE_PASSWORD'] %>
 EOL
 remove_file 'config/database.yml'
@@ -477,12 +407,71 @@ create_file 'config/database.yml', database_config
 git add: '.'
 git commit: '-m "Add welcome"'
 
+heroku_project_name = nil
+
 if yes?("Create new heroku instance?")
-  project_name = ask("Name of heroku project?")
-  run "heroku create #{project_name}"
+  heroku_project_name = ask("Name of heroku project?")
+  run "heroku create #{heroku_project_name}"
   git push: 'heroku master'
   run 'heroku ps:scale web=1' # free tier
   run 'heroku open'
 end
+
+if yes?("Create new repo on Gitlab?")
+  project_name = ask("Name of Gitlab project?")
+  git push: "--set-upstream git@gitlab.com:stephaneliu/#{project_name}.git master"
+
+  create_file 'config/database.yml.gitlab' do
+<<-EOL
+test:
+  adapter: postgresql
+  encoding: unicode
+  pool: 5
+  timeout: 5000
+  host: postgres
+  username: runner
+  password: ""
+  database: test_db
+EOL
+  end
+
+  # CI/CD
+  create_file '.gitlab-ci.yml' do
+<<-EOL
+image: "ruby:2.5"
+
+services:
+  - postgres:latest
+
+variables:
+  POSTGRES_DB: test_db
+  POSTGRES_USER: runner
+  POSTGRES_PASSWORD: ""
+
+before_script:
+  - apt-get update -qq && apt-get install -y -qq postgresql postgresql-contrib libpq-dev cmake \
+nodejs
+  - ruby -v
+  - which ruby
+  - gem install bundler --no-ri --no-rdoc
+  - RAILS_ENV=test bundle install --jobs $(nproc) "${FLAGS[@]}"
+  - cp config/database.yml.gitlab config/database.yml
+  - RAILS_ENV=test bundle exec rake db:drop db:create db:schema:load
+
+rspec:
+  script:
+    - RAILS_ENV=test bundle exec rspec
+
+pronto:
+  script:
+    - bundle exec pronto run -c=origin/master --exit-code
+EOL
+  end
+end
+
+git add: '.'
+git commit: '-m "Add gitlab ci"'
+git push: 'origin master'
+
 run 'bundle exec rubocop'
 run 'bundle exec rspec spec' # should have no errors
