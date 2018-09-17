@@ -492,4 +492,4 @@ if yes?("Create new heroku instance?")
   run 'heroku open'
 end
 run 'bundle exec rubocop'
-run 'bundle exec rpsec spec' # should have no errors
+run 'bundle exec rspec spec' # should have no errors
