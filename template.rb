@@ -129,15 +129,6 @@ end
 EOL
 create_file "spec/support/shoulda_matchers.rb", shoulda_matchers
 
-rack_timeout_config = <<-EOL
-# frozen_string_literal: true
-
-# In absence of callback from Heroku router to
-# notify Puma of request timeout, set a manual timeout per request
-Rack::Timeout.timeout = 20 # seconds
-EOL
-create_file 'config/initializers/timeout.rb', rack_timeout_config
-
 procfile = <<-EOL
 web: bundle exec puma -C config/puma.rb
 EOL
