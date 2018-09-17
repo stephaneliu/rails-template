@@ -296,7 +296,8 @@ Metrics/BlockLength:
 Metrics/LineLength:
   Exclude:
     - 'Gemfile'
-    - 'config/initializers/devise.rb'
+    - 'config/initializers/*'
+    - 'db/seeds.rb'
   Max: 100
 
 Style/MixinUsage:
@@ -425,6 +426,8 @@ welcome = <<-EOL
 EOL
 create_file 'app/views/welcome/index.html.haml', welcome
 
+run 'bundle exec rubocop --auto-correct'
+
 route = <<-EOL
 # frozen_string_literal: true
 
@@ -489,3 +492,4 @@ if yes?("Create new heroku instance?")
   run 'heroku open'
 end
 run 'bundle exec rubocop'
+run 'bundle exec rpsec spec' # should have no errors
