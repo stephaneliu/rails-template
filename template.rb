@@ -168,13 +168,6 @@ create_file '.env', env
 
 create_file ".ruby-version", "ruby-#{RUBY_VERSION}"
 
-append_to_file 'Gemfile' do
-<<-EOL
-
-"ruby '#{RUBY_VERSION}'"
-EOL
-end
-
 guard_setup = <<-EOL
 # frozen_string_literal: true
 
