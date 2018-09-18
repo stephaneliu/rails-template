@@ -1,5 +1,10 @@
 ## Installation
 
+Requirements:
+* Postgresql service running
+* Heroku CLI client installed
+* Gitlab account with ssh key configured
+
 Create a '~/.railsrc' file and add the following:
 
 ```

@@ -315,7 +315,7 @@ create_file ".rubocop.yml", rubocop_config
 
 create_file 'README'
 
-run 'bundle exec rubocop --auto-correct'
+run 'bundle exec rubocop --auto-correct --format simple'
 
 git :init
 git add: '.'
@@ -349,7 +349,7 @@ welcome = <<-EOL
 EOL
 create_file 'app/views/welcome/index.html.haml', welcome
 
-run 'bundle exec rubocop --auto-correct'
+run 'bundle exec rubocop --auto-correct --format simple'
 
 route = <<-EOL
 # frozen_string_literal: true
@@ -366,6 +366,8 @@ default: &default
   adapter: postgresql
   encoding: unicode
   pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
+  host: <%= ENV.fetch("PGHOST") { "localhost" } %>
+  username: <%= ENV.fetch("PGUSER") { ENV["USER"] } %>
 
 development:
   <<: *default
@@ -373,9 +375,7 @@ development:
 
 test:
   <<: *default
-  database: notonline_test
-  host: <%= ENV.fetch("PGHOST") { "localhost" } %>
-  username: <%= ENV.fetch("PGUSER") { ENV["USER"] } %>
+  database: #{app_name}_test
 
 # As with config/secrets.yml, you never want to store sensitive information,
 # like your database password, in your source code. If your source code is
@@ -398,7 +398,7 @@ test:
 #
 production:
   <<: *default
-  database: notonline_productionj
+  database: #{app_name}_production
   password: <%= ENV['#{app_name}_DATABASE_PASSWORD'] %>
 EOL
 remove_file 'config/database.yml'
@@ -410,7 +410,7 @@ git commit: '-m "Add welcome"'
 heroku_project_name = nil
 
 if yes?("Create new heroku instance?")
-  heroku_project_name = ask("Name of heroku project?")
+  heroku_project_name = ask("Name of heroku project?", default: "#{app_name}")
   run "heroku create #{heroku_project_name}"
   git push: 'heroku master'
   run 'heroku ps:scale web=1' # free tier
@@ -418,8 +418,9 @@ if yes?("Create new heroku instance?")
 end
 
 if yes?("Create new repo on Gitlab?")
-  project_name = ask("Name of Gitlab project?")
-  git push: "--set-upstream git@gitlab.com:stephaneliu/#{project_name}.git master"
+  git remote: "add origin git@gitlab.com:stephaneliu/#{app_name}.git"
+  git push: "origin master"
+  git branch: "--set-upstream-to=origin/master master"
 
   create_file 'config/database.yml.gitlab' do
 <<-EOL
@@ -438,7 +439,7 @@ EOL
   # CI/CD
   create_file '.gitlab-ci.yml' do
 <<-EOL
-image: "ruby:2.5"
+image: "ruby:2.5.0"
 
 services:
   - postgres:latest
@@ -473,5 +474,5 @@ git add: '.'
 git commit: '-m "Add gitlab ci"'
 git push: 'origin master'
 
-run 'bundle exec rubocop'
+run 'bundle exec rubocop --auto-correct --format simple'
 run 'bundle exec rspec spec' # should have no errors
