@@ -411,7 +411,12 @@ heroku_project_name = nil
 
 if yes?("Create new heroku instance?")
   heroku_project_name = ask("Name of heroku project?", default: "#{app_name}")
-  run "heroku create #{heroku_project_name}"
+  say "Creating staging env on Heroku"
+  run "heroku create #{heroku_project_name}-staging"
+
+  say "Creating production env on Heroku"
+  run "heroku create #{heroku_project_name}-production"
+
   git push: 'heroku master'
   run 'heroku ps:scale web=1' # free tier
   run 'heroku open'
@@ -449,23 +454,35 @@ variables:
   POSTGRES_USER: runner
   POSTGRES_PASSWORD: ""
 
-before_script:
-  - apt-get update -qq && apt-get install -y -qq postgresql postgresql-contrib libpq-dev cmake \
-nodejs
-  - ruby -v
-  - which ruby
-  - gem install bundler --no-ri --no-rdoc
-  - RAILS_ENV=test bundle install --jobs $(nproc) "${FLAGS[@]}"
-  - cp config/database.yml.gitlab config/database.yml
-  - RAILS_ENV=test bundle exec rake db:drop db:create db:schema:load
-
-rspec:
+test:
+  stage: test
+  before_script:
+    - apt-get update -qq && apt-get install -y -qq nodejs
+    - ruby -v
+    - which ruby
+    - gem install bundler --no-ri --no-rdoc
+    - RAILS_ENV=test bundle install --jobs $(nproc) "${FLAGS[@]}"
+    - cp config/database.yml.gitlab config/database.yml
+    - RAILS_ENV=test bundle exec rake db:drop db:create db:schema:load
   script:
     - RAILS_ENV=test bundle exec rspec
-
-pronto:
-  script:
     - bundle exec pronto run -c=origin/master --exit-code
+
+staging:
+  stage: deploy
+  script:
+    - gem install dpl
+    - dpl --provider=heroku --app=#{heroku_project_name}-staging --api-key=$HEROKU_STAGING_API_KEY
+  only:
+    - master
+
+staging:
+  stage: deploy
+  script:
+    - gem install dpl
+    - dpl --provider=heroku --app=#{heroku_project_name}-production --api-key=$HEROKU_PRODOCTION_API_KEY
+  only:
+    - tags
 EOL
   end
 end
