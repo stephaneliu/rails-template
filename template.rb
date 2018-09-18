@@ -470,6 +470,9 @@ test:
 
 staging:
   stage: deploy
+  environment:
+    name: staging
+    url: https://#{heroku_project_name}-staging.herokuapp.com
   script:
     - gem install dpl
     - dpl --provider=heroku --app=#{heroku_project_name}-staging --api-key=$HEROKU_STAGING_API_KEY
@@ -478,6 +481,9 @@ staging:
 
 staging:
   stage: deploy
+  environment:
+    name: production
+    url: https://#{heroku_project_name}-production.herokuapp.com
   script:
     - gem install dpl
     - dpl --provider=heroku --app=#{heroku_project_name}-production --api-key=$HEROKU_PRODOCTION_API_KEY
