@@ -475,7 +475,7 @@ staging:
     url: https://#{heroku_project_name}-staging.herokuapp.com
   script:
     - gem install dpl
-    - dpl --provider=heroku --app=#{heroku_project_name}-staging --api-key=$HEROKU_STAGING_API_KEY
+    - dpl --provider=heroku --app=#{heroku_project_name}-staging --api-key=$HEROKU_API_KEY
   only:
     - master
 
@@ -486,7 +486,7 @@ staging:
     url: https://#{heroku_project_name}-production.herokuapp.com
   script:
     - gem install dpl
-    - dpl --provider=heroku --app=#{heroku_project_name}-production --api-key=$HEROKU_PRODOCTION_API_KEY
+    - dpl --provider=heroku --app=#{heroku_project_name}-production --api-key=$HEROKU_API_KEY
   only:
     - tags
 EOL
