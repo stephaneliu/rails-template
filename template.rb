@@ -491,7 +491,12 @@ staging:
     - tags
 EOL
   end
+
+  run("open https://gitlab.com/stephaneliu/#{app_name}/settings/ci_cd")
+  run("open https://dashboard.heroku.com/account")
+  say("Reminder - create HEROKU_API_KEY variable for project. Web pages have been opened.", :red, :bold)
 end
+
 
 git add: '.'
 git commit: '-m "Add gitlab ci"'
