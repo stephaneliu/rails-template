@@ -414,11 +414,16 @@ heroku_project_name = nil
 
 if yes?("Create new heroku instance?")
   heroku_project_name = ask("Name of heroku project?", default: "#{app_name}")
+
   say "Creating staging env on Heroku"
   run "heroku create #{heroku_project_name}-staging"
+  say "Adding master key to heroku staging instance"
+  run "heroku config:set -a #{heroku_project_name}-staging RAILS_MASTER_KEY=$(cat config/master.key)
 
   say "Creating production env on Heroku"
   run "heroku create #{heroku_project_name}-production"
+  say "Adding master key to heroku production instance"
+  run "heroku config:set -a #{heroku_project_name}-production RAILS_MASTER_KEY=$(cat config/master.key)
 
   git push: 'heroku master'
   run 'heroku ps:scale web=1' # free tier
