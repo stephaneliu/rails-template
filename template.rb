@@ -12,6 +12,7 @@ gem_group :development do
   gem 'foreman'
   gem 'guard'
   gem 'guard-brakeman', require: false
+  gem 'guard-ctags-bundler'
   gem 'guard-reek'
   gem 'guard-rspec'
   gem 'guard-rubocop'
@@ -256,6 +257,8 @@ run 'bundle exec spring binstub --all'
 
 append_to_file '.gitignore' do
 <<-EOL
+gems.tags
+tags
 ./coverage
 ./.env
 ./config/initializers/*
@@ -449,44 +452,79 @@ image: "ruby:2.5"
 services:
   - postgres:latest
 
+.cache_bundler: &cache_bundler
+  cache:
+    untracked: true
+    key: "$CI_BUILD_REF_NAME"
+    paths:
+      - cache/bundle/
+
+.setup_test_env: &setup_test_env
+  before_script:
+    # Check installation
+    - ruby -v
+    - which ruby
+
+    # Install dependencies
+    - apt-get update -qq && apt-get install -y -qq nodejs cmake
+    
+    # Project Setup
+    - gem install bundler --no-ri --no-rdoc
+    - bundle install --path=cache/bundler --jobs $(nproc) "${FLAGS[@]}"
+    - cp config/database.yml.gitlab config/database.yml
+    - bundle exec rails db:create RAILS_ENV=test 
+    - bundle exec rails db:schema:load RAILS_ENV=test
+
 variables:
   POSTGRES_DB: test_db
   POSTGRES_USER: runner
   POSTGRES_PASSWORD: ""
+  BUNDLE_PATH: vendor/bundle
+  DISABLE_SPRING: 1
+
+stages:
+  - test
+  - lint
+  - deploy
 
 test:
   stage: test
-  before_script:
-    - apt-get update -qq && apt-get install -y -qq nodejs
-    - ruby -v
-    - which ruby
-    - gem install bundler --no-ri --no-rdoc
-    - RAILS_ENV=test bundle install --jobs $(nproc) "${FLAGS[@]}"
-    - cp config/database.yml.gitlab config/database.yml
-    - RAILS_ENV=test bundle exec rake db:drop db:create db:schema:load
+  <<: *cache_bundler
+  <<: *setup_test_env
   script:
     - RAILS_ENV=test bundle exec rspec
+
+Pronto:
+  stage: lint
+  <<: *cache_bundler
+  <<: *setup_test_env
+  allow_failure: true
+  script:
     - bundle exec pronto run -c=origin/master --exit-code
 
-staging:
+Deploy Staging:
   stage: deploy
+  retry: 2
   environment:
     name: staging
     url: https://#{heroku_project_name}-staging.herokuapp.com
   script:
-    - gem install dpl
+    - ./bin/setup_heroku
     - dpl --provider=heroku --app=#{heroku_project_name}-staging --api-key=$HEROKU_API_KEY
+    - heroku run rake db:migrate --exit-code --app #{heroku_project_name}
   only:
     - master
 
-staging:
+Deploy Production:
   stage: deploy
+  retry: 2
   environment:
     name: production
     url: https://#{heroku_project_name}-production.herokuapp.com
   script:
-    - gem install dpl
+    - ./bin/setup_heroku
     - dpl --provider=heroku --app=#{heroku_project_name}-production --api-key=$HEROKU_API_KEY
+    - heroku run rake db:migrate --exit-code --app #{heroku_project_name}
   only:
     - tags
 EOL
