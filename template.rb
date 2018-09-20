@@ -18,7 +18,6 @@ gem_group :development do
   gem 'guard-rubocop'
   gem 'html2haml'
   gem 'hub'
-  gem 'listen', '< 4.0'
   gem 'meta_request'
   gem 'pronto'
   gem 'pronto-brakeman', require: false
