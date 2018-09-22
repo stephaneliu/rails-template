@@ -424,11 +424,17 @@ if yes?("Create new heroku instance?")
   say "Adding master key to heroku production instance"
   run "heroku config:set -a #{heroku_project_name}-production RAILS_MASTER_KEY=$(cat config/master.key)"
 
-  say("Enabling encryption master key in production environment", :yellow)
+  say "Enabling encryption master key in production environment", :yellow
   uncomment_lines 'config/environments/production.rb', /require_master_key/
 
   git push: 'heroku master'
   run 'heroku ps:scale web=1' # free tier
+
+  say "Adding papertrail logging/alerting - free tier", :yellow
+  run "heroku addons:create papertrail:choklad -a #{heroku_project_name}-production"
+  say "Opening papertrail dashboard", :yellow
+  run "heroku addons:open papertrail -a #{heroku_project_name}-production"
+
   run 'heroku open'
 end
 
