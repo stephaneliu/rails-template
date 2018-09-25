@@ -411,7 +411,35 @@ git commit: '-m "Add welcome"'
 
 heroku_project_name = nil
 
+create_file 'bin/setup_heroku' do
+<<-EOL
+set -e
+
+apt-get update -yq
+apt-get install apt-transport-https python3-software-properties -y
+
+curl https://cli-assets.heroku.com/install.sh | sh
+
+gem install dpl
+EOL
+end
+chmod 'bin/setup_heroku', 0755
+
 if yes?("Create new heroku instance?")
+  create_file 'bin/setup_heroku' do
+<<-EOL
+set -e
+
+apt-get update -yq
+apt-get install apt-transport-https python3-software-properties -y
+
+curl https://cli-assets.heroku.com/install.sh | sh
+
+gem install dpl
+EOL
+  end
+  chmod 'bin/setup_heroku', 0755
+
   heroku_project_name = ask("Name of heroku project?", default: "#{app_name}")
 
   say "Creating staging env on Heroku"
