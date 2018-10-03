@@ -488,7 +488,7 @@ EOL
   # CI/CD
   create_file '.gitlab-ci.yml' do
 <<-EOL
-image: "ruby:2.5"
+image: "ruby:#{RUBY_VERSION}"
 
 services:
   - postgres:latest
