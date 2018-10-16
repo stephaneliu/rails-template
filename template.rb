@@ -1,3 +1,4 @@
+gem 'awesome_print'
 gem 'bootstrap', '~>4.0.0'
 gem 'devise'
 gem 'font-awesome-rails'
