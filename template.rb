@@ -77,6 +77,8 @@ end
 EOL
 prepend_to_file 'spec/spec_helper.rb', simplecov_config
 
+uncomment_lines('spec/spec_helper.rb', /disable_monkey_patching!/)
+
 reek_config = <<-EOL
 "app/controllers":
   IrresponsibleModule:
