@@ -1,0 +1,49 @@
+  AllCops:
+    Exclude:
+      - 'db/schema.rb'
+  Metrics/BlockLength:
+    Exclude:
+      - 'Guardfile'
+
+  Style/Documentation:
+    Exclude:
+      - 'spec/**/*'
+      - 'test/**/*'
+      - 'app/controllers/application_controller.rb'
+      - 'app/helpers/application_helper.rb'
+      - 'app/mailers/application_mailer.rb'
+      - 'app/models/application_record.rb'
+      - 'config/application.rb'
+
+  Metrics/BlockLength:
+    Exclude:
+      - 'Guardfile'
+      - 'lib/tasks/auto_annotate_models.rake'
+
+  Metrics/LineLength:
+    Exclude:
+      - 'Gemfile'
+      - 'config/initializers/*'
+      - 'db/seeds.rb'
+    Max: 100
+
+  Naming/HeredocDelimiterNaming:
+    Enabled: false
+
+  Style/MixinUsage:
+    Exclude:
+      - 'bin/setup'
+      - 'bin/update'
+
+  Style/PercentLiteralDelimiters:
+    Exclude:
+      - 'Guardfile'
+
+  Style/RegexpLiteral:
+    Exclude:
+      - 'Guardfile'
+
+  Style/StringLiterals:
+    EnforcedStyle: "double_quotes"
+    Exclude:
+      - 'Guardfile'
