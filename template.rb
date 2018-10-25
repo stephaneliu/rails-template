@@ -160,13 +160,6 @@ plugin :tmp_restart
   remove_file "config/puma.rb"
   create_file "config/puma.rb", puma_config
 
-  env = <<-EOL
-RACK_ENV=development
-PORT=3000
-PGUSER=#{ENV['USER']}
-  EOL
-
-  create_file ".env", env
   create_file ".ruby-version", "ruby-#{RUBY_VERSION}"
 
   guard_setup = <<-EOL
