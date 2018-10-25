@@ -578,7 +578,7 @@ Deploy Staging:
   script:
     - ./bin/setup_heroku
     - dpl --provider=heroku --app=#{@heroku_project_name}-staging --api-key=$HEROKU_API_KEY
-    - heroku run rake db:migrate --exit-code --app #{@heroku_project_name}
+    - heroku run rake db:migrate --exit-code --app #{@heroku_project_name}-staging
   only:
     - master
 
@@ -591,7 +591,7 @@ Deploy Production:
   script:
     - ./bin/setup_heroku
     - dpl --provider=heroku --app=#{@heroku_project_name}-production --api-key=$HEROKU_API_KEY
-    - heroku run rake db:migrate --exit-code --app #{@heroku_project_name}
+    - heroku run rake db:migrate --exit-code --app #{@heroku_project_name}-production
   only:
     - tags
     EOL
