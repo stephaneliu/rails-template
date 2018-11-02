@@ -439,7 +439,7 @@ gem install dpl
     EOL
   end
 
-  chmod "bin/setup_heroku", 0o755
+  chmod "bin/setup_heroku", 0755
 
   @heroku_project_name = ask("Name of Heroku project?", default: app_name)
 
