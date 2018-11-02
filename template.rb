@@ -1,4 +1,5 @@
 def apply_template
+  set_gitlab_username
   customize_gems
   add_welcome_page
   customize_database
@@ -6,6 +7,10 @@ def apply_template
   configure_heroku if yes?("Create new heroku instance?")
 
   configure_gitlab if yes?("Create new repo on Gitlab?")
+end
+
+def set_gitlab_username
+  @gitlab_username = ask("What is your username for Gitlab?", default: 'stephaneliu')
 end
 
 def customize_gems
@@ -482,7 +487,7 @@ gem install dpl
 end
 
 def configure_gitlab
-  git remote: "add origin git@gitlab.com:stephaneliu/#{app_name}.git"
+  git remote: "add origin git@gitlab.com:#{@gitlab_username}/#{app_name}.git"
   git push: "origin master"
   git branch: "--set-upstream-to=origin/master master"
 
@@ -590,7 +595,7 @@ Deploy Production:
     EOL
   end
 
-  run("open https://gitlab.com/stephaneliu/#{app_name}/settings/ci_cd")
+  run("open https://gitlab.com/#{@gitlab_username}/#{app_name}/settings/ci_cd")
   run("open https://dashboard.heroku.com/account")
   say("Reminder - create HEROKU_API_KEY variable for project. Web pages have been opened.",
       :red, :bold)
