@@ -10,7 +10,7 @@ def apply_template
 end
 
 def set_gitlab_username
-  @gitlab_username = ask("What is your username for Gitlab?", default: 'stephaneliu')
+  @gitlab_username = ask("What is your username for Gitlab?", default: "stephaneliu")
 end
 
 def customize_gems
