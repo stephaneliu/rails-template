@@ -1,5 +1,4 @@
 def apply_template
-  set_gitlab_username
   customize_gems
   add_welcome_page
   customize_database
@@ -487,6 +486,8 @@ gem install dpl
 end
 
 def configure_gitlab
+  set_gitlab_username
+
   git remote: "add origin git@gitlab.com:#{@gitlab_username}/#{app_name}.git"
   git push: "origin master"
   git branch: "--set-upstream-to=origin/master master"
