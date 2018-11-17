@@ -64,6 +64,11 @@ def customize_gems
     gem "shoulda-matchers", "4.0.0.rc1"
     gem "rails-controller-testing" # dependency of shoulda-matchers
     gem "simplecov"
+    gem 'test-prof'
+  end
+
+  group :development, :test do
+    gem 'rubocop-rspec'
   end
 
   run "bundle install"
@@ -265,27 +270,17 @@ tags
   rails_command "db:create"
 
   rubocop_config = <<-EOL
+require:
+  - 'rubocop-rspec'
+  - 'test_prof/rubocop'
+
 AllCops:
   Exclude:
     - 'db/schema.rb'
-Metrics/BlockLength:
-  Exclude:
-    - 'Guardfile'
 
-Style/Documentation:
-  Exclude:
-    - 'spec/**/*'
-    - 'test/**/*'
-    - 'app/controllers/application_controller.rb'
-    - 'app/helpers/application_helper.rb'
-    - 'app/mailers/application_mailer.rb'
-    - 'app/models/application_record.rb'
-    - 'config/application.rb'
-
-Metrics/BlockLength:
-  Exclude:
-    - 'Guardfile'
-    - 'lib/tasks/auto_annotate_models.rake'
+FrozenStringLiteralComment:
+  Enabled: true
+  EnforcedStyle: 'when_needed'
 
 Metrics/LineLength:
   Exclude:
@@ -294,8 +289,68 @@ Metrics/LineLength:
     - 'db/seeds.rb'
   Max: 100
 
+Metrics/BlockLength:
+  Exclude:
+    - 'Gemfile'
+    - 'Guardfile'
+    - 'lib/tasks/auto_annotate_models.rake'
+    - 'spec/**/*.rb'
+
+MultilineOperationIndentation:
+  EnforcedStyle: 'indented'
+
 Naming/HeredocDelimiterNaming:
   Enabled: false
+
+Naming/VariableNumber:
+  EnforcedStyle: 'snake_case'
+
+Rails:
+  Enabled: true
+
+RSpec/DescribeClass:
+  Exclude:
+    - 'spec/views/**/*'
+    - 'spec/routing/*'
+    - 'spec/features/**/*'
+
+RSpec/ExampleLength:
+  Exclude:
+    - 'spec/features/**/*'
+
+RSpec/MultipleExpectations:
+  Max: 2
+  Exclude:
+    - 'spec/features/**/*'
+
+RSpec/NestedGroups:
+  Max: 3
+
+StringLiterals:
+  Enabled: false
+
+Style/Documentation:
+  Exclude:
+    - 'app/controllers/application_controller.rb'
+    - 'app/helpers/application_helper.rb'
+    - 'app/mailers/application_mailer.rb'
+    - 'app/models/application_record.rb'
+    - 'bin/*'
+    - 'build/**/*'
+    - 'config/**/*'
+    - 'config/application.rb'
+    - 'db/**/*'
+    - 'deploy/**/*'
+    - 'doc/**/*'
+    - 'docker/**/*'
+    - 'Gemfile'
+    - 'Guardfile'
+    - 'lib/tasks/*'
+    - 'script/**/*'
+    - 'spec/**/*'
+    - 'test/**/*'
+    - 'vendor/**/*'
+    - !ruby/regexp /old_and_unused\.rb$/
 
 Style/MixinUsage:
   Exclude:
