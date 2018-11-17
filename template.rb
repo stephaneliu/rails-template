@@ -64,11 +64,11 @@ def customize_gems
     gem "shoulda-matchers", "4.0.0.rc1"
     gem "rails-controller-testing" # dependency of shoulda-matchers
     gem "simplecov"
-    gem 'test-prof'
+    gem "test-prof"
   end
 
   gem_group :development, :test do
-    gem 'rubocop-rspec'
+    gem "rubocop-rspec"
   end
 
   run "bundle install"
