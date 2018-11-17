@@ -67,7 +67,7 @@ def customize_gems
     gem 'test-prof'
   end
 
-  group :development, :test do
+  gem_group :development, :test do
     gem 'rubocop-rspec'
   end
 
