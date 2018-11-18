@@ -481,6 +481,7 @@ def setup_bootstrap_css
   application_scss = <<-EOL
 // Custom bootstrap variables must be set or imported *before* bootstrap.
 @import "bootstrap";
+@import "font-awesome";
   EOL
 
   remove_file "app/assets/stylesheets/application.css"
