@@ -311,6 +311,11 @@ Naming/VariableNumber:
 Rails:
   Enabled: true
 
+RSpec/AggregateFailures:
+  Enabled: true
+  Include:
+    - 'spec/**/*.rb'
+
 RSpec/DescribeClass:
   Exclude:
     - 'spec/views/**/*'
@@ -334,10 +339,10 @@ StringLiterals:
 
 Style/Documentation:
   Exclude:
-    - 'app/controllers/application_controller.rb'
+    - 'app/controllers/*'
     - 'app/helpers/application_helper.rb'
     - 'app/mailers/application_mailer.rb'
-    - 'app/models/application_record.rb'
+    - 'app/models/*'
     - 'bin/*'
     - 'build/**/*'
     - 'config/**/*'
