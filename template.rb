@@ -1,7 +1,9 @@
 def apply_template
   customize_gems
+
   add_welcome_page
   customize_database
+  setup_bootstrap
 
   configure_heroku if yes?("Create new heroku instance?")
 
@@ -387,14 +389,14 @@ Style/StringLiterals:
 
   generator_configs = <<-EOL
       config.generators do |g|
-        g.assets              false
         g.helper              false
         g.test_framework      :rspec, fixture: true
         g.view_specs          false
         g.fixture_replacement :factory_bot, dir: "spec/factories"
         g.helper              false
         g.template_engine     :haml
-        g.stylesheets         false
+        g.stylesheet_engine   :sass
+        g.javascript_engine   :coffee
       end
   EOL
 
@@ -410,10 +412,13 @@ def add_welcome_page
   generate "controller welcome"
   welcome = <<-EOL
 %h1 Welcome
-%p
-  Time now
-  = Time.now
-  to strike, while the iron is hot
+.jumbotron
+  %h1.display-4 Welcome!
+  %p.lead
+    The time now is
+    = Time.now
+  %hr.my-4
+  %p Strike while the iron is hot!
   EOL
 
   create_file "app/views/welcome/index.html.haml", welcome
@@ -452,25 +457,6 @@ test:
   <<: *default
   database: #{app_name}_test
 
-# As with config/secrets.yml, you never want to store sensitive information,
-# like your database password, in your source code. If your source code is
-# ever seen by anyone, they now have access to your database.
-#
-# Instead, provide the password as a unix environment variable when you boot
-# the app. Read http://guides.rubyonrails.org/configuring.html#configuring-a-database
-# for a full rundown on how to provide these environment variables in a
-# production deployment.
-#
-# On Heroku and other platform providers, you may have a full connection URL
-# available as an environment variable. For example:
-#
-#   DATABASE_URL="mysql2://myuser:mypass@localhost/somedatabase"
-#
-# You can use this database configuration with:
-#
-#   production:
-#     url: <%= ENV['DATABASE_URL'] %>
-#
 production:
   <<: *default
   database: #{app_name}_production
@@ -482,6 +468,57 @@ production:
 
   git add: "."
   git commit: '-m "Customize database"'
+end
+
+def setup_bootstrap
+  say "Bootstrapping Bootstrap"
+  setup_bootstrap_css
+  setup_bootstrap_javascript
+  setup_bootstrap_layout
+end
+
+def setup_bootstrap_css
+  application_scss = <<-EOL
+// Custom bootstrap variables must be set or imported *before* bootstrap.
+@import "bootstrap";
+  EOL
+
+  remove_file "app/assets/stylesheets/application.css"
+  create_file "app/assets/stylesheets/application.scss"
+end
+
+def setup_bootstrap_javascript
+  bootstrap_required_js = <<-EOL
+//= require jquery3
+//= require popper
+//= require bootstrap-sprockets
+  EOL
+
+  inject_into_file "app/assets/javascripts/application.js", \
+    bootstrap_required_js, \
+    before: "//= require_tree ."
+end
+
+def setup_bootstrap_layout
+  application_layout = <<-EOL
+!!!
+%html{lang: 'en'}
+  %head
+    %title Hawaiian Crane & Rigging, LTD.
+    %meta{charset: 'utf-8'}
+    %meta{name: 'viewport', content: "width=device-width, initial-scale=1, shrink-to-fit=no"}
+    = csrf_meta_tags
+    = csp_meta_tag
+    = stylesheet_link_tag    'application', media: 'all', 'data-turbolinks-track': 'reload'
+    = javascript_include_tag 'application', 'data-turbolinks-track': 'reload'
+
+    %body
+      .container-fluid
+        = yield
+  EOL
+
+  remove_file "app/views/layouts/application.html.erb"
+  create_file "app/views/layouts/application.html.haml", application_layout
 end
 
 def configure_heroku
