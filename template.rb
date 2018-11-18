@@ -260,6 +260,7 @@ end
   run "bundle exec spring binstub --all"
 
   git_ignore = <<-EOL
+.DS_Store
 gems.tags
 tags
 ./coverage
