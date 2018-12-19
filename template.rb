@@ -1,5 +1,21 @@
 def apply_template
+  git :init
+
   customize_gems
+  configure_rspec
+  configure_devise
+  configure_annotate
+  configure_pronto
+  configure_reek
+  configure_puma
+  configure_ruby_version
+  configure_guard
+  configure_spring
+  configure_git
+  configure_rails_defaults
+
+  create_database
+  create_readme
 
   add_welcome_page
   customize_database
@@ -23,7 +39,7 @@ def customize_gems
   gem "font-awesome-rails"
   gem "haml-rails"
   gem "jquery-rails"
-  gem "pg"
+  gem "pg", "~>0.21"
   gem "rack-timeout"
 
   gem_group :development do
@@ -33,6 +49,7 @@ def customize_gems
     gem "guard"
     gem "guard-brakeman", require: false
     gem "guard-ctags-bundler"
+    gem 'guard-haml_lint'
     gem "guard-reek"
     gem "guard-rspec"
     gem "guard-rubocop"
@@ -75,16 +92,12 @@ def customize_gems
 
   run "bundle install"
 
-  # setup rspec
+  git add: "."
+  git commit: '-m "Chore: Customize gems"'
+end
+
+def configure_rspec
   generate "rspec:install"
-  generate "devise:install"
-  generate "annotate:install"
-
-  pronto_config = <<-EOL
-verbose: false
-  EOL
-
-  create_file ".pronto.yml", pronto_config
 
   simplecov_config = <<-EOL
 require 'simplecov'
@@ -102,9 +115,38 @@ end
   EOL
 
   prepend_to_file "spec/spec_helper.rb", simplecov_config
-
   uncomment_lines("spec/spec_helper.rb", /disable_monkey_patching!/)
 
+  git add: "."
+  git commit: '-m "Chore: Configure rspec"'
+end
+
+def configure_devise 
+  generate "devise:install"
+
+  git add: "."
+  git commit: '-m "Chore: Configure devise"'
+end
+
+def configure_annotate
+  generate "annotate:install"
+
+  git add: "."
+  git commit: '-m "Chore: Configure annotate"'
+end
+
+def configure_pronto
+  pronto_config = <<-EOL
+verbose: false
+  EOL
+
+  create_file ".pronto.yml", pronto_config
+
+  git add: "."
+  git commit: '-m "Chore: Configure pronto"'
+end
+
+def configure_reek
   reek_config = <<-EOL
 "app/controllers":
   IrresponsibleModule:
@@ -127,6 +169,11 @@ end
 
   create_file ".reek", reek_config
 
+  git add: "."
+  git commit: '-m "Chore: Configure reek"'
+end
+
+def configure_shoulda_matcher
   # Setup shoulda matchers
   shoulda_matchers = <<-EOL
 Shoulda::Matchers.configure do |config|
@@ -139,6 +186,11 @@ end
 
   create_file "spec/support/shoulda_matchers.rb", shoulda_matchers
 
+  git add: "."
+  git commit: '-m "Chore: Configure shoulda_matchers"'
+end
+
+def configure_puma
   procfile = <<-EOL
 web: bundle exec puma -C config/puma.rb
   EOL
@@ -171,8 +223,18 @@ plugin :tmp_restart
   remove_file "config/puma.rb"
   create_file "config/puma.rb", puma_config
 
+  git add: "."
+  git commit: '-m "Chore: Configure puma"'
+end
+
+def configure_ruby_version
   create_file ".ruby-version", "ruby-#{RUBY_VERSION}"
 
+  git add: "."
+  git commit: '-m "Chore: Configure ruby version"'
+end
+
+def configure_guard
   guard_setup = <<-EOL
 # frozen_string_literal: true
 
@@ -253,12 +315,31 @@ group :red_green_refactor, halt_on_fail: true do
     watch('Gemfile')
   end
 end
+
+# Guard-HamlLint supports a lot options with default values:
+# all_on_start: true        # Check all files at Guard startup. default: true
+# haml_dires: ['app/views'] # Check Directories. default: 'app/views' or '.'
+# cli: '--fail-fast --no-color' # Additional command line options to haml-lint.
+guard :haml_lint, all_on_start: false do
+  watch(%r{.+\.html.*\.haml$})
+  watch(%r{(?:.+/)?\.haml-lint\.yml$}) { |m| File.dirname(m[0]) }
+end
   EOL
 
   create_file "Guardfile", guard_setup
 
+  git add: "."
+  git commit: '-m "Chore: Configure guard"'
+end
+
+def configure_spring
   run "bundle exec spring binstub --all"
 
+  git add: "bin"
+  git commit: '-m "Chore: Configure spring"'
+end
+
+def configure_git
   git_ignore = <<-EOL
 .DS_Store
 gems.tags
@@ -270,8 +351,11 @@ tags
 
   append_to_file ".gitignore", git_ignore
 
-  rails_command "db:create"
+  git add: "."
+  git commit: '-m "Chore: Configure git"'
+end
 
+def configure_rubocop
   rubocop_config = <<-EOL
 require:
   - 'rubocop-rspec'
@@ -381,18 +465,19 @@ Style/StringLiterals:
 
   create_file ".rubocop.yml", rubocop_config
 
+  git add: "."
+  git commit: '-m "Chore: Configure rubocop"'
+end
+
+def create_readme
   create_file "README"
 
-  run "bundle exec rubocop --auto-correct --format simple"
-
-  git :init
   git add: "."
-  git commit: '-m "Initial commit."'
+  git commit: '-m "Chore: Create readme"'
+end
 
-  run "direnv allow"
 
-  run "spring stop"
-
+def configure_rails_defaults
   generator_configs = <<-EOL
       config.generators do |g|
         g.helper              false
@@ -409,12 +494,20 @@ Style/StringLiterals:
   inject_into_class "config/application.rb", "Application", generator_configs
 
   git add: "."
-  git commit: '-m "Customize gems"'
+  git commit: '-m "Chore: Configure rails defaults"'
+end
+
+def create_database
+  rails_command "db:create"
+
+  git add: "."
+  git commit: '-m "Chore: Create database"'
 end
 
 def add_welcome_page
   say "Adding welcome page"
 
+  run "spring stop"
   generate "controller welcome"
   welcome = <<-EOL
 %h1 Welcome
@@ -443,7 +536,7 @@ end
   run_rubocop_autocorrect
 
   git add: "."
-  git commit: '-m "Add welcome"'
+  git commit: '-m "Feature: Add welcome"'
 end
 
 def customize_database
@@ -473,7 +566,7 @@ production:
   create_file "config/database.yml", database_config
 
   git add: "."
-  git commit: '-m "Customize database"'
+  git commit: '-m "Chore: Customize database"'
 end
 
 def setup_bootstrap
@@ -481,6 +574,8 @@ def setup_bootstrap
   setup_bootstrap_css
   setup_bootstrap_javascript
   setup_bootstrap_layout
+  git add: "."
+  git commit: '-m "Chore: Configure Bootstrap"'
 end
 
 def setup_bootstrap_css
@@ -490,7 +585,7 @@ def setup_bootstrap_css
 @import "font-awesome";
   EOL
 
-  remove_file "app/assets/stylesheets/application.css"
+  git rm: "app/assets/stylesheets/application.css"
   create_file "app/assets/stylesheets/application.scss"
 end
 
@@ -524,7 +619,7 @@ def setup_bootstrap_layout
         = yield
   EOL
 
-  remove_file "app/views/layouts/application.html.erb"
+  git rm: "app/views/layouts/application.html.erb"
   create_file "app/views/layouts/application.html.haml", application_layout
 end
 
@@ -581,7 +676,7 @@ gem install dpl
   run "heroku open"
 
   git add: "."
-  git commit: '-m "Configure heroku"'
+  git commit: '-m "Chore: Configure heroku"'
 end
 
 def configure_gitlab
@@ -701,7 +796,7 @@ Deploy Production:
       :red, :bold)
 
   git add: "."
-  git commit: '-m "Add gitlab ci"'
+  git commit: '-m "Chore: Add gitlab ci"'
   git push: "origin master"
 
   run_rubocop_autocorrect
