@@ -826,3 +826,9 @@ def heroku_compliant_name
 end
 
 apply_template
+
+after_bundle do
+  git add: '.'
+  git commit: '-m "Chore: Spring-ify rails"'
+  say "Todo: Remember to CLEAN UP GEMFILE", :red
+end
