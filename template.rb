@@ -1,5 +1,5 @@
 def apply_template
-  git :init
+  initial_commit
 
   customize_gems
   configure_rspec
@@ -28,6 +28,12 @@ end
 
 def set_gitlab_username
   @gitlab_username = ask("What is your username for Gitlab?", default: "stephaneliu")
+end
+
+def initial_commit
+  git :init
+  git add: '.'
+  git commit: '-m "Chore: Initial commit"'
 end
 
 def customize_gems
