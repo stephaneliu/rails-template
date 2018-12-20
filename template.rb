@@ -49,7 +49,6 @@ def customize_gems
   gem "rack-timeout"
 
   gem_group :development do
-    gem "annotate"
     gem "better_errors"
     gem "foreman"
     gem "guard"
@@ -79,6 +78,7 @@ def customize_gems
   end
 
   gem_group :test do
+    gem "annotate"
     gem "capybara", "~> 2.13"
     gem "factory_bot_rails"
     gem "faker"
@@ -137,8 +137,9 @@ end
 def configure_annotate
   generate "annotate:install"
 
-  git add: "."
-  git commit: '-m "Chore: Configure annotate"'
+  append_to_file "Rakefile", "Annotate.load_tasks"
+
+  commit("Chore: Configure annotate")
 end
 
 def configure_pronto
