@@ -3,6 +3,7 @@ def apply_template
 
   customize_gems
   configure_rspec
+  configure_shoulda_matchers
   configure_devise
   configure_annotate
   configure_pronto
@@ -180,8 +181,7 @@ def configure_reek
   git commit: '-m "Chore: Configure reek"'
 end
 
-def configure_shoulda_matcher
-  # Setup shoulda matchers
+def configure_shoulda_matchers
   shoulda_matchers = <<-EOL
 Shoulda::Matchers.configure do |config|
   config.integrate do |with|
