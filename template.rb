@@ -59,6 +59,7 @@ def customize_gems
     gem "guard-reek"
     gem "guard-rspec"
     gem "guard-rubocop"
+    gem 'guard-process'
     gem "html2haml"
     gem "hub"
     gem "meta_request"
@@ -238,6 +239,19 @@ def configure_guard
   guard_setup = <<-EOL
 # frozen_string_literal: true
 
+guard 'process', name: 'Webpacker', command: 'bin/webpack' do
+  watch(%r{^app/javascript/\w+/*})
+end
+
+# Guard-HamlLint supports a lot options with default values:
+# all_on_start: true        # Check all files at Guard startup. default: true
+# haml_dires: ['app/views'] # Check Directories. default: 'app/views' or '.'
+# cli: '--fail-fast --no-color' # Additional command line options to haml-lint.
+guard :haml_lint, all_on_start: false do
+  watch(%r{.+\.html.*\.haml$})
+  watch(%r{(?:.+/)?\.haml-lint\.yml$}) { |m| File.dirname(m[0]) }
+end
+
 group :red_green_refactor, halt_on_fail: true do
   rspec_options = {
     cmd: 'bin/rspec -f doc',
@@ -314,15 +328,6 @@ group :red_green_refactor, halt_on_fail: true do
     watch(%r{^lib/.+\.rb$})
     watch('Gemfile')
   end
-end
-
-# Guard-HamlLint supports a lot options with default values:
-# all_on_start: true        # Check all files at Guard startup. default: true
-# haml_dires: ['app/views'] # Check Directories. default: 'app/views' or '.'
-# cli: '--fail-fast --no-color' # Additional command line options to haml-lint.
-guard :haml_lint, all_on_start: false do
-  watch(%r{.+\.html.*\.haml$})
-  watch(%r{(?:.+/)?\.haml-lint\.yml$}) { |m| File.dirname(m[0]) }
 end
   EOL
 
