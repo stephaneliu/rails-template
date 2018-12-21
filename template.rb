@@ -428,6 +428,7 @@ StringLiterals:
 Style/Documentation:
   Exclude:
     - 'app/controllers/*'
+    - 'app/forms/*'
     - 'app/helpers/application_helper.rb'
     - 'app/mailers/application_mailer.rb'
     - 'app/models/*'
