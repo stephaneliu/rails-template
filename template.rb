@@ -13,6 +13,7 @@ def apply_template
   configure_guard
   configure_spring
   configure_git
+  configure_rubocop
   configure_rails_defaults
 
   create_database
@@ -371,6 +372,7 @@ require:
 AllCops:
   Exclude:
     - 'db/schema.rb'
+    - 'node_modules/**/*'
 
 FrozenStringLiteralComment:
   Enabled: true
