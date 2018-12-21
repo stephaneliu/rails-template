@@ -243,6 +243,19 @@ guard 'process', name: 'Webpacker', command: 'bin/webpack' do
   watch(%r{^app/javascript/\w+/*})
 end
 
+
+brakeman_options = {
+  run_on_start: true,
+  quiet: true
+}
+
+guard 'brakeman', brakeman_options do
+  watch(%r{^app/.+\.(erb|haml|rhtml|rb)$})
+  watch(%r{^config/.+\.rb$})
+  watch(%r{^lib/.+\.rb$})
+  watch('Gemfile')
+end
+
 # Guard-HamlLint supports a lot options with default values:
 # all_on_start: true        # Check all files at Guard startup. default: true
 # haml_dires: ['app/views'] # Check Directories. default: 'app/views' or '.'
@@ -315,18 +328,6 @@ group :red_green_refactor, halt_on_fail: true do
   guard :rubocop, rubocop_options do
     watch(%r{.+\.rb$})
     watch(%r{(?:.+/)?\.rubocop(?:_todo)?\.yml$}) { |m| File.dirname(m[0]) }
-  end
-
-  brakeman_options = {
-    run_on_start: true,
-    quiet: true
-  }
-
-  guard 'brakeman', brakeman_options do
-    watch(%r{^app/.+\.(erb|haml|rhtml|rb)$})
-    watch(%r{^config/.+\.rb$})
-    watch(%r{^lib/.+\.rb$})
-    watch('Gemfile')
   end
 end
   EOL
@@ -599,11 +600,11 @@ end
 def setup_bootstrap_layout
   application_layout = <<-EOL
 !!!
-%html{lang: 'en'}
+%html{ lang: 'en' }
   %head
     %title #{app_name}
-    %meta{charset: 'utf-8'}
-    %meta{name: 'viewport', content: "width=device-width, initial-scale=1, shrink-to-fit=no"}
+    %meta{ charset: 'utf-8' }
+    %meta{ name: 'viewport', content: "width=device-width, initial-scale=1, shrink-to-fit=no" }
     = csrf_meta_tags
     = csp_meta_tag
     = stylesheet_link_tag    'application', media: 'all', 'data-turbolinks-track': 'reload'
