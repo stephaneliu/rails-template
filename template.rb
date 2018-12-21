@@ -34,8 +34,7 @@ end
 
 def initial_commit
   git :init
-  git add: '.'
-  git commit: '-m "Chore: Initial commit"'
+  commit("Chore: Initial commit")
 end
 
 def customize_gems
@@ -100,8 +99,7 @@ def customize_gems
 
   run "bundle install"
 
-  git add: "."
-  git commit: '-m "Chore: Customize gems"'
+  commit("Chore: Customize gems")
 end
 
 def configure_rspec
@@ -124,16 +122,15 @@ end
 
   prepend_to_file "spec/spec_helper.rb", simplecov_config
   uncomment_lines("spec/spec_helper.rb", /disable_monkey_patching!/)
+  uncomment_lines("spec/spec_helper.rb", /config\.filter_run_when_matching/)
 
-  git add: "."
-  git commit: '-m "Chore: Configure rspec"'
+  commit("Chore: Configure rspec")
 end
 
 def configure_devise 
   generate "devise:install"
 
-  git add: "."
-  git commit: '-m "Chore: Configure devise"'
+  commit("Chore: Configure devise")
 end
 
 def configure_annotate
@@ -151,8 +148,7 @@ verbose: false
 
   create_file ".pronto.yml", pronto_config
 
-  git add: "."
-  git commit: '-m "Chore: Configure pronto"'
+  commit("Chore: Configure pronto")
 end
 
 def configure_reek
@@ -178,8 +174,7 @@ def configure_reek
 
   create_file ".reek", reek_config
 
-  git add: "."
-  git commit: '-m "Chore: Configure reek"'
+  commit("Chore: Configure reek")
 end
 
 def configure_shoulda_matchers
@@ -187,15 +182,14 @@ def configure_shoulda_matchers
 Shoulda::Matchers.configure do |config|
   config.integrate do |with|
     with.test_framework :rspec
-    with.library :rails
+    with.library        :rails
   end
 end
   EOL
 
   create_file "spec/support/shoulda_matchers.rb", shoulda_matchers
 
-  git add: "."
-  git commit: '-m "Chore: Configure shoulda_matchers"'
+  commit("Chore: Configure shoulda_matchers")
 end
 
 def configure_puma
@@ -231,15 +225,13 @@ plugin :tmp_restart
   remove_file "config/puma.rb"
   create_file "config/puma.rb", puma_config
 
-  git add: "."
-  git commit: '-m "Chore: Configure puma"'
+  commit("Chore: Configure puma")
 end
 
 def configure_ruby_version
   create_file ".ruby-version", "ruby-#{RUBY_VERSION}"
 
-  git add: "."
-  git commit: '-m "Chore: Configure ruby version"'
+  commit("Chore: Configure ruby version")
 end
 
 def configure_guard
@@ -336,15 +328,13 @@ end
 
   create_file "Guardfile", guard_setup
 
-  git add: "."
-  git commit: '-m "Chore: Configure guard"'
+  commit("Chore: Configure guard")
 end
 
 def configure_spring
   run "bundle exec spring binstub --all"
 
-  git add: "bin"
-  git commit: '-m "Chore: Configure spring"'
+  commit("Chore: Configure spring")
 end
 
 def configure_git
@@ -359,8 +349,7 @@ tags
 
   append_to_file ".gitignore", git_ignore
 
-  git add: "."
-  git commit: '-m "Chore: Configure git"'
+  commit("Chore: Configure git")
 end
 
 def configure_rubocop
@@ -474,15 +463,13 @@ Style/StringLiterals:
 
   create_file ".rubocop.yml", rubocop_config
 
-  git add: "."
-  git commit: '-m "Chore: Configure rubocop"'
+  commit("Chore: Configure rubocop")
 end
 
 def create_readme
   create_file "README"
 
-  git add: "."
-  git commit: '-m "Chore: Create readme"'
+  commit("Chore: Create readme")
 end
 
 
@@ -502,15 +489,13 @@ def configure_rails_defaults
 
   inject_into_class "config/application.rb", "Application", generator_configs
 
-  git add: "."
-  git commit: '-m "Chore: Configure rails defaults"'
+  commit("Chore: Configure rails defaults")
 end
 
 def create_database
   rails_command "db:create"
 
-  git add: "."
-  git commit: '-m "Chore: Create database"'
+  commit("Chore: Create database")
 end
 
 def add_welcome_page
@@ -542,10 +527,7 @@ end
   remove_file "config/routes.rb"
   create_file "config/routes.rb", route
 
-  run_rubocop_autocorrect
-
-  git add: "."
-  git commit: '-m "Feature: Add welcome"'
+  commit("Feature: Add welcome")
 end
 
 def customize_database
@@ -574,8 +556,7 @@ production:
   remove_file "config/database.yml"
   create_file "config/database.yml", database_config
 
-  git add: "."
-  git commit: '-m "Chore: Customize database"'
+  commit("Chore: Customize database")
 end
 
 def setup_bootstrap
@@ -583,8 +564,8 @@ def setup_bootstrap
   setup_bootstrap_css
   setup_bootstrap_javascript
   setup_bootstrap_layout
-  git add: "."
-  git commit: '-m "Chore: Configure Bootstrap"'
+
+  commit("Chore: Configure Bootstrap")
 end
 
 def setup_bootstrap_css
@@ -684,8 +665,7 @@ gem install dpl
 
   run "heroku open"
 
-  git add: "."
-  git commit: '-m "Chore: Configure heroku"'
+  commit("Chore: Configure heroku")
 end
 
 def configure_gitlab
@@ -804,16 +784,14 @@ Deploy Production:
   say("Reminder - create HEROKU_API_KEY variable for project. Web pages have been opened.",
       :red, :bold)
 
-  git add: "."
-  git commit: '-m "Chore: Add gitlab ci"'
+  commit("Chore: Add gitlab ci")
   git push: "origin master"
-
-  run_rubocop_autocorrect
-  run "bundle exec rspec spec" # should have no errors
 end
 
-def run_rubocop_autocorrect
-  run "bundle exec rubocop --auto-correct --format simple"
+def rubocop(autocorrect=true)
+  options = "--format simple"
+  options += " --auto-correct" if autocorrect
+  run "bundle exec rubocop #{options}"
 end
 
 def non_compliant_heroku_app_name?(name)
@@ -828,10 +806,21 @@ def heroku_compliant_name
     .gsub(/-{2,}/, "-")       # replace repeating hyphens with one hyphen
 end
 
+def commit(message)
+  git add: "."
+  git commit: "-m '#{message}'"
+end
+
 apply_template
 
 after_bundle do
-  git add: '.'
-  git commit: '-m "Chore: Spring-ify rails"'
+  commit("Chore: Spring-ify rails")
+
+  rubocop
+  commit("Fix: Fix rubocop violations")
+
+  run "bundle exec rspec" # should have no errors
+
+  rubocop(!:autocorrect)
   say "Todo: Remember to CLEAN UP GEMFILE", :red
 end
