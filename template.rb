@@ -85,7 +85,6 @@ def customize_gems
     gem "factory_bot_rails"
     gem "faker"
     gem "rspec_junit_formatter" # translate for circle-ci
-    gem "pry-rails"
     gem "rspec-rails"
     gem "selenium-webdriver" # system test using selenium_chrome_headless
     gem "shoulda-matchers", "4.0.0.rc1"
@@ -96,6 +95,8 @@ def customize_gems
 
   gem_group :development, :test do
     gem "rubocop-rspec"
+    gem "pry-byebug"
+    gem "pry-rails"
   end
 
   run "bundle install"
