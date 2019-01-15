@@ -583,7 +583,7 @@ def setup_bootstrap_css
   EOL
 
   git rm: "app/assets/stylesheets/application.css"
-  create_file "app/assets/stylesheets/application.scss"
+  create_file "app/assets/stylesheets/application.scss", application_scss
 end
 
 def setup_bootstrap_javascript
@@ -591,6 +591,7 @@ def setup_bootstrap_javascript
 //= require jquery3
 //= require popper
 //= require bootstrap-sprockets
+
   EOL
 
   inject_into_file "app/assets/javascripts/application.js", \
