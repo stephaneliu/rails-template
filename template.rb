@@ -270,7 +270,7 @@ group :red_green_refactor, halt_on_fail: true do
   rspec_options = {
     cmd: 'bin/rspec -f doc',
     run_all: {
-      cmd: 'COVERAGE=true bin/rspec -f doc'
+      cmd: 'COVERAGE=true DISABLE_SPRING=true bin/rspec -f doc'
     },
     all_after_pass: true
   }
