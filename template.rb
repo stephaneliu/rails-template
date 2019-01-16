@@ -341,6 +341,18 @@ end
 def configure_spring
   run "bundle exec spring binstub --all"
 
+  spring_simplecov = <<-EOL
+# frozen_string_literal: true
+
+# Fixes low coverage when using Spring and Simplecov
+if ENV['RAILS_ENV'] == 'test' && ENV['COVERAGE'] == 'true'
+  require 'simplecov'
+  SimpleCov.start
+end
+  EOL
+
+  prepend_to_file 'spec/
+
   commit("Chore: Configure spring")
 end
 
