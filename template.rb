@@ -11,7 +11,7 @@ def apply_template
   configure_puma
   configure_ruby_version
   configure_guard
-  configure_spring
+  # configure_spring
   configure_git
   configure_rubocop
   configure_rails_defaults
@@ -46,7 +46,7 @@ def customize_gems
   gem "font-awesome-rails"
   gem "haml-rails"
   gem "jquery-rails"
-  gem "pg", "~>0.21"
+  # gem "pg", "~>0.21"
   gem "rack-timeout"
 
   gem_group :development do
@@ -339,21 +339,6 @@ end
 end
 
 def configure_spring
-  run "bundle exec spring binstub --all"
-
-  spring_simplecov = <<-EOL
-# frozen_string_literal: true
-
-# Fixes low coverage when using Spring and Simplecov
-if ENV['RAILS_ENV'] == 'test' && ENV['COVERAGE'] == 'true'
-  require 'simplecov'
-  SimpleCov.start
-end
-  EOL
-
-  prepend_to_file 'spec/
-
-  commit("Chore: Configure spring")
 end
 
 def configure_git
