@@ -81,7 +81,7 @@ def customize_gems
 
   gem_group :test do
     gem "annotate"
-    gem "capybara", "~> 2.13"
+    # gem "capybara", "~> 2.13"
     gem "factory_bot_rails"
     gem "faker"
     gem "rspec_junit_formatter" # translate for circle-ci
