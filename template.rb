@@ -575,6 +575,10 @@ end
 
 def setup_bootstrap_css
   application_scss = <<-EOL
+/*
+*= require_self
+*= require_tree .
+*/
 // Custom bootstrap variables must be set or imported *before* bootstrap.
 @import "bootstrap";
 @import "font-awesome";
