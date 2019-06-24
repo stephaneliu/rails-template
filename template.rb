@@ -369,7 +369,7 @@ AllCops:
 
 FrozenStringLiteralComment:
   Enabled: true
-  EnforcedStyle: 'when_needed'
+  EnforcedStyle: 'always'
 
 Metrics/LineLength:
   Exclude:
