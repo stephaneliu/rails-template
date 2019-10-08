@@ -1,4 +1,5 @@
 def apply_template
+
   initial_commit
 
   customize_gems
@@ -6,7 +7,6 @@ def apply_template
   configure_shoulda_matchers
   configure_devise
   configure_annotate
-  configure_pronto
   configure_reek
   configure_puma
   configure_ruby_version
@@ -61,12 +61,6 @@ def customize_gems
     gem "html2haml"
     gem "hub"
     gem "meta_request"
-    gem "pronto"
-    gem "pronto-brakeman", require: false
-    gem "pronto-haml", require: false
-    gem "pronto-reek", require: false
-    gem "pronto-rubocop", require: false
-    gem "pronto-simplecov", require: false
     gem "rails_layout"
     gem "rubocop"
     gem "spring"
@@ -139,16 +133,6 @@ def configure_annotate
   append_to_file "Rakefile", "Annotate.load_tasks"
 
   commit("Chore: Configure annotate")
-end
-
-def configure_pronto
-  pronto_config = <<-EOL
-verbose: false
-  EOL
-
-  create_file ".pronto.yml", pronto_config
-
-  commit("Chore: Configure pronto")
 end
 
 def configure_reek
@@ -682,7 +666,7 @@ variables:
 
 stages:
   - test
-  - lint
+#  - lint
   - deploy
 
 test:
@@ -692,13 +676,13 @@ test:
   script:
     - RAILS_ENV=test bundle exec rspec
 
-Pronto:
-  stage: lint
-  <<: *cache_bundler
-  <<: *setup_test_env
-  allow_failure: true
-  script:
-    - bundle exec pronto run -c=origin/master --exit-code
+# Pronto:
+#   stage: lint
+#   <<: *cache_bundler
+#   <<: *setup_test_env
+#   allow_failure: true
+#   script:
+#     - bundle exec pronto run -c=origin/master --exit-code
 
 Deploy Staging:
   stage: deploy
@@ -737,9 +721,9 @@ Deploy Production:
   git push: "origin master"
 end
 
-def rubocop(autocorrect=true)
+def rubocop
   options = "--format simple"
-  options += " --auto-correct" if autocorrect
+  options += " --auto-correct"
   run "bundle exec rubocop #{options}"
 end
 
