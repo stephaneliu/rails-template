@@ -21,7 +21,6 @@ def apply_template
 
   add_welcome_page
   customize_database
-  setup_bootstrap
 
   configure_heroku if yes?("Create new heroku instance?")
 
@@ -41,7 +40,6 @@ def customize_gems
   say "Customizing gems"
 
   gem "awesome_print"
-  gem "bootstrap", "~>4.1.0"
   gem "devise"
   gem "font-awesome-rails"
   gem "haml-rails"
@@ -562,65 +560,6 @@ production:
   create_file "config/database.yml", database_config
 
   commit("Chore: Customize database")
-end
-
-def setup_bootstrap
-  say "Bootstrapping Bootstrap"
-  setup_bootstrap_css
-  setup_bootstrap_javascript
-  setup_bootstrap_layout
-
-  commit("Chore: Configure Bootstrap")
-end
-
-def setup_bootstrap_css
-  application_scss = <<-EOL
-/*
-*= require_self
-*= require_tree .
-*/
-// Custom bootstrap variables must be set or imported *before* bootstrap.
-@import "bootstrap";
-@import "font-awesome";
-  EOL
-
-  git rm: "app/assets/stylesheets/application.css"
-  create_file "app/assets/stylesheets/application.scss", application_scss
-end
-
-def setup_bootstrap_javascript
-  bootstrap_required_js = <<-EOL
-//= require jquery3
-//= require popper
-//= require bootstrap-sprockets
-
-  EOL
-
-  inject_into_file "app/assets/javascripts/application.js", \
-    bootstrap_required_js, \
-    before: "//= require_tree ."
-end
-
-def setup_bootstrap_layout
-  application_layout = <<-EOL
-!!!
-%html{ lang: 'en' }
-  %head
-    %title #{app_name}
-    %meta{ charset: 'utf-8' }
-    %meta{ name: 'viewport', content: "width=device-width, initial-scale=1, shrink-to-fit=no" }
-    = csrf_meta_tags
-    = csp_meta_tag
-    = stylesheet_link_tag    'application', media: 'all', 'data-turbolinks-track': 'reload'
-    = javascript_include_tag 'application', 'data-turbolinks-track': 'reload'
-
-    %body
-      .container-fluid
-        = yield
-  EOL
-
-  git rm: "app/views/layouts/application.html.erb"
-  create_file "app/views/layouts/application.html.haml", application_layout
 end
 
 def configure_heroku
