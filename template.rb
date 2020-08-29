@@ -48,44 +48,44 @@ def customize_gems
   gem "rack-timeout"
 
   gem_group :development do
+    gem "annotate"
     gem "annotate_gem"
     gem "better_errors"
     gem "guard"
     gem "guard-brakeman", require: false
-    gem 'guard-haml_lint'
     gem "guard-reek"
     gem "guard-rspec"
     gem "guard-rubocop"
-    gem 'guard-process'
     gem "html2haml"
     gem "meta_request"
     gem "rails_layout"
     gem "rubocop"
     gem "spring"
     gem "spring-commands-rspec"
-    gem "spring-watcher-listen", "~> 2.0.0"
+    gem "spring-watcher-listen"
     gem "terminal-notifier"
     gem "terminal-notifier-guard"
     gem "web-console", ">= 3.3.0"
+    gem 'guard-haml_lint'
+    gem 'guard-process'
   end
 
   gem_group :test do
-    gem "annotate"
     # gem "capybara", "~> 2.13"
     gem "factory_bot_rails"
     gem "faker"
+    gem "rails-controller-testing" # dependency of shoulda-matchers
     gem "rspec-rails"
     gem "selenium-webdriver" # system test using selenium_chrome_headless
     gem "shoulda-matchers", "4.0.0.rc1"
-    gem "rails-controller-testing" # dependency of shoulda-matchers
     gem "simplecov"
     gem "test-prof"
   end
 
   gem_group :development, :test do
-    gem "rubocop-rspec"
     gem "pry-byebug"
     gem "pry-rails"
+    gem "rubocop-rspec"
   end
 
   run "bundle install"
@@ -128,7 +128,7 @@ end
 def configure_annotate
   generate "annotate:install"
 
-  append_to_file "Rakefile", "Annotate.load_tasks"
+  append_to_file "Rakefile", "Annotate.load_tasks if Rails.env.development?"
 
   commit("Chore: Configure annotate")
 end
@@ -462,19 +462,15 @@ def configure_rails_defaults
       g.helper              false
       g.template_engine     :haml
       g.stylesheet_engine   :sass
-      g.javascript_engine   :coffee
     end
   EOL
 
-  inject_into_class "config/application.rb", "Application", generator_configs
-
+  application generator_configs
   commit("Chore: Configure rails defaults")
 end
 
 def create_database
   rails_command "db:create"
-
-  commit("Chore: Create database")
 end
 
 def add_welcome_page
@@ -494,18 +490,7 @@ def add_welcome_page
   EOL
 
   create_file "app/views/welcome/index.html.haml", welcome
-
-  route = <<~EOL.strip
-    # frozen_string_literal: true
-
-    Rails.application.routes.draw do
-      root 'welcome#index'
-    end
-  EOL
-
-  remove_file "config/routes.rb"
-  create_file "config/routes.rb", route
-
+  route "root 'welcome#index'"
   commit("Feature: Add welcome")
 end
 
@@ -639,6 +624,7 @@ def configure_heroku
   say "Enabling encryption master key in production environment", :yellow
   uncomment_lines "config/environments/production.rb", /require_master_key/
 
+  commit("Chore: Configure heroku")
   git push: "heroku master"
   run "heroku ps:scale web=1" # free tier
 
@@ -648,8 +634,6 @@ def configure_heroku
   run "heroku addons:open papertrail -a #{@heroku_project_name}-production"
 
   run "heroku open"
-
-  commit("Chore: Configure heroku")
 end
 
 def configure_gitlab
@@ -772,7 +756,7 @@ def configure_gitlab_ci
   git push: "origin master"
 end
 
-def rubocop(autocorrect=true)
+def run_rubocop(autocorrect=true)
   options = "--format simple"
   options += " --auto-correct" if autocorrect
   run "bundle exec rubocop #{options}"
@@ -798,13 +782,14 @@ end
 apply_template
 
 after_bundle do
-  commit("Chore: Spring-ify rails")
+  configure_heroku if yes?("Create new heroku instance?")
+  configure_github
 
-  rubocop
+  run_rubocop
   commit("Fix: Fix rubocop violations")
 
   run "bundle exec rspec" # should have no errors
 
-  rubocop(!:autocorrect)
+  run_rubocop(!:autocorrect)
   say "Todo: Remember to CLEAN UP GEMFILE", :red
 end
