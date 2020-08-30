@@ -1,4 +1,5 @@
 def apply_template
+  validate_dependencies
   initial_commit
 
   customize_gems
@@ -19,15 +20,14 @@ def apply_template
 
   add_welcome_page
   customize_database
-  setup_bootstrap
-
-  configure_heroku if yes?("Create new heroku instance?")
-
-  configure_gitlab if yes?("Create new repo on Gitlab?")
+  # setup_bootstrap
 end
 
-def set_gitlab_username
-  @gitlab_username = ask("What is your username for Gitlab?", default: "stephaneliu")
+def validate_dependencies
+  return true if(system("which gh"))
+
+  say "gh (Github CLI) not installed"
+  exit 1
 end
 
 def initial_commit
@@ -341,16 +341,15 @@ def configure_rubocop
         - 'db/schema.rb'
         - 'node_modules/**/*'
 
-    FrozenStringLiteralComment:
-      Enabled: true
-      EnforcedStyle: 'always'
-
-    Metrics/LineLength:
+    Layout/LineLength:
       Exclude:
         - 'Gemfile'
         - 'config/initializers/*'
         - 'db/seeds.rb'
       Max: 100
+
+    Layout/MultilineOperationIndentation:
+      EnforcedStyle: 'indented'
 
     Metrics/BlockLength:
       Exclude:
@@ -358,9 +357,6 @@ def configure_rubocop
         - 'Guardfile'
         - 'lib/tasks/auto_annotate_models.rake'
         - 'spec/**/*.rb'
-
-    MultilineOperationIndentation:
-      EnforcedStyle: 'indented'
 
     Naming/HeredocDelimiterNaming:
       Enabled: false
@@ -371,7 +367,7 @@ def configure_rubocop
     Rails:
       Enabled: true
 
-    RSpec/AggregateFailures:
+    RSpec/AggregateExamples:
       Enabled: true
       Include:
         - 'spec/**/*.rb'
@@ -393,9 +389,6 @@ def configure_rubocop
 
     RSpec/NestedGroups:
       Max: 3
-
-    StringLiterals:
-      Enabled: false
 
     Style/Documentation:
       Exclude:
@@ -420,6 +413,10 @@ def configure_rubocop
         - 'test/**/*'
         - 'vendor/**/*'
         - !ruby/regexp /old_and_unused\.rb$/
+
+    Style/FrozenStringLiteralComment:
+      Enabled: true
+      EnforcedStyle: 'always'
 
     Style/MixinUsage:
       Exclude:
@@ -471,6 +468,7 @@ end
 
 def create_database
   rails_command "db:create"
+  rails_command "db:migrate"
 end
 
 def add_welcome_page
@@ -501,6 +499,7 @@ def customize_database
       encoding: unicode
       pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
       host: <%= ENV.fetch("PGHOST") { "localhost" } %>
+      password: <%= ENV.fetch("PG_PASSWORD") { ENV['#{app_name}_DATABASE_PASSWORD'] } %>
       username: <%= ENV.fetch("PGUSER") { ENV["USER"] } %>
 
     development:
@@ -514,7 +513,7 @@ def customize_database
     production:
       <<: *default
       database: #{app_name}_production
-      password: <%= ENV['#{app_name}_DATABASE_PASSWORD'] %>
+      host: <%= ENV.fetch("PGHOST") { "localhost" } %>
   EOL
 
   remove_file "config/database.yml"
@@ -636,130 +635,80 @@ def configure_heroku
   run "heroku open"
 end
 
-def configure_gitlab
-  set_gitlab_username
-
-  git remote: "add origin git@gitlab.com:#{@gitlab_username}/#{app_name}.git"
-  git push: "origin master"
-  git branch: "--set-upstream-to=origin/master master"
-
-  configure_gitlab_ci
+def configure_github
+  # replace with (gh api repos/:owner/:repo).[:full_name].slice('/').first => stephaneliu
+  @github_username = "stephaneliu" #ask("What is your username for Github?", default: "stephaneliu")
+  run "gh repo create"
+  configure_github_ci
 end
 
-def configure_gitlab_ci
-  create_file "config/database.yml.gitlab" do
+def configure_github_ci
+  create_file ".github/workflows/ci.yml" do
     <<~EOL.strip
-      test:
-        adapter: postgresql
-        encoding: unicode
-        pool: 5
-        timeout: 5000
-        host: postgres
-        username: runner
-        password: ""
-        database: test_db
+      name: CI
+      on: [push, pull_request]
+      jobs:
+        test:
+          runs-on: ubuntu-latest
+
+          services:
+            db:
+              image: postgres:11@sha256:85d79cba2d4942dad7c99f84ec389a5b9cc84fb07a3dcd3aff0fb06948cdc03b
+              ports: ['5432:5432']
+              options: >-
+                --health-cmd pg_isready
+                --health-interval 10s
+                --health-timeout 5s
+                --health-retries 5
+            redis:
+              image: redis
+              ports: ['6379:6379']
+              options: --entrypoint redis-server
+
+          steps:
+            - name: Checkout repo
+              uses: actions/checkout@v2
+
+            - name: Setup Ruby
+              uses: actions/setup-ruby@v1
+              with:
+                ruby-version: #{ENV.fetch("RUBY_VERSION") { "2.6.x" }}
+
+            - name: Install yarn
+              uses: borales/actions-yarn@v2.0.0
+              with:
+                cmd: install
+
+            - name: Cache Bundler
+              uses: actions/cache@v2
+              with:
+                path: vendor/bundle
+                key: ${{ runner.os }}-gems-${{ hashFiles('**/Gemfile.lock') }}
+                restore-keys: |
+                  ${{ runner.os }}-gems-
+
+            - name: Build and run tests
+              env:
+                PGUSER: postgres
+                PG_PASSWORD: postgres
+                REDIS_URL: redis://localhost:6379/0
+                RAILS_ENV: test
+                RAILS_MASTER_KEY: ${{ secrets.RAILS_MASTER_KEY }}
+              run: |
+                sudo apt-get -yqq install libpq-dev
+                gem install bundler
+                bundle config path vendor/bundle
+                bundle install --jobs 4 --retry 3
+                bundle exec rails db:prepare
+                bundle exec rspec spec
     EOL
   end
 
-  # CI/CD
-  create_file ".gitlab-ci.yml" do
-    <<~EOL.strip
-      image: "ruby:#{RUBY_VERSION}"
+  run("open https://github.com/#{@github_username}/#{app_name}/settings/secrets")
+  ask("Create a RAILS_MASTER_KEY in browser (cat config/master.key | pbcopy). Hit ENTER to continue", default: "[ENTER]")
 
-      services:
-        - postgres:latest
-
-      .cache_bundler: &cache_bundler
-        cache:
-          untracked: true
-          key: "$CI_BUILD_REF_NAME"
-          paths:
-            - cache/bundle/
-
-      .setup_test_env: &setup_test_env
-        before_script:
-          # Check installation
-          - ruby -v
-          - which ruby
-
-          # Install dependencies
-          - apt-get update -qq && apt-get install -y -qq nodejs cmake
-
-          # Project Setup
-          - gem install bundler --no-ri --no-rdoc
-          - bundle install --path=cache/bundler --jobs $(nproc) "${FLAGS[@]}"
-          - cp config/database.yml.gitlab config/database.yml
-          - bundle exec rails db:create RAILS_ENV=test
-          - bundle exec rails db:schema:load RAILS_ENV=test
-
-      variables:
-        POSTGRES_DB: test_db
-        POSTGRES_USER: runner
-        POSTGRES_PASSWORD: ""
-        BUNDLE_PATH: vendor/bundle
-        DISABLE_SPRING: 1
-
-      stages:
-        - test
-        - lint
-        - deploy
-
-      test:
-        stage: test
-        <<: *cache_bundler
-        <<: *setup_test_env
-        script:
-          - RAILS_ENV=test bundle exec rspec
-
-      Pronto:
-        stage: lint
-        <<: *cache_bundler
-        <<: *setup_test_env
-        allow_failure: true
-        script:
-          - bundle exec pronto run -c=origin/master --exit-code
-
-      Deploy Staging:
-        stage: deploy
-        retry: 2
-        environment:
-          name: staging
-          url: https://#{@heroku_project_name}-staging.herokuapp.com
-        script:
-          - ./bin/setup_heroku
-          - dpl --provider=heroku --app=#{@heroku_project_name}-staging --api-key=$HEROKU_API_KEY
-          - heroku run rake db:migrate --exit-code --app #{@heroku_project_name}-staging
-        only:
-          - master
-
-      Deploy Production:
-        stage: deploy
-        retry: 2
-        environment:
-          name: production
-          url: https://#{@heroku_project_name}-production.herokuapp.com
-        script:
-          - ./bin/setup_heroku
-          - dpl --provider=heroku --app=#{@heroku_project_name}-production --api-key=$HEROKU_API_KEY
-          - heroku run rake db:migrate --exit-code --app #{@heroku_project_name}-production
-        only:
-          - tags
-    EOL
-  end
-
-  run("open https://gitlab.com/#{@gitlab_username}/#{app_name}/settings/ci_cd")
-  run("open https://dashboard.heroku.com/account")
-  say("Reminder - create HEROKU_API_KEY variable for project. Web pages have been opened.",
-      :red, :bold)
-
-  commit("Chore: Add gitlab ci")
-  git push: "origin master"
-end
-
-def run_rubocop(autocorrect=true)
-  options = "--format simple"
-  options += " --auto-correct" if autocorrect
-  run "bundle exec rubocop #{options}"
+  commit("Chore: Add github CI")
+  git push: "--set-upstream origin master"
 end
 
 def non_compliant_heroku_app_name?(name)
@@ -782,14 +731,16 @@ end
 apply_template
 
 after_bundle do
-  configure_heroku if yes?("Create new heroku instance?")
+  # configure_heroku if yes?("Create new heroku instance?")
   configure_github
 
-  run_rubocop
+  say "Run rubocop"
+  run "bundle exec rubocop --format simple --auto-correct"
   commit("Fix: Fix rubocop violations")
 
+  say "Run tests"
   run "bundle exec rspec" # should have no errors
 
-  run_rubocop(!:autocorrect)
-  say "Todo: Remember to CLEAN UP GEMFILE", :red
+  run "bundle exec rubocop --format simple"
+  say "TODO: Remember to CLEAN UP GEMFILE", :red
 end
