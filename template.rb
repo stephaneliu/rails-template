@@ -13,6 +13,7 @@ def apply_template
   configure_spring
   configure_git
   configure_rubocop
+  configure_prettier
   configure_rails_defaults
 
   create_database
@@ -58,6 +59,7 @@ def customize_gems
     gem "guard-rubocop"
     gem "html2haml"
     gem "meta_request"
+    gem "prettier"
     gem "rails_layout"
     gem "rubocop"
     gem "spring"
@@ -340,6 +342,7 @@ def configure_rubocop
       Exclude:
         - 'db/schema.rb'
         - 'node_modules/**/*'
+        - 'vendor/**/*'
 
     Layout/LineLength:
       Exclude:
@@ -440,6 +443,34 @@ def configure_rubocop
   create_file ".rubocop.yml", rubocop_config
 
   commit("Chore: Configure rubocop")
+end
+
+def configure_prettier
+  pretterrc = <<~EOL.strip
+    {
+      "preferSingleQuotes": false,
+      "printWidth": 100
+    }
+  EOL
+
+  prettier_ignore = <<~EOL.strip
+    db/schema.rb
+    db/migrate/*
+    coverage
+    doc
+    docker
+    engines/**/db/schema.rb
+    engines/**/db/migrate/*
+    tmp
+    vendor
+  EOL
+
+  create_file ".prettierrc", prettierrc 
+  create_file ".prettierignore", prettier_ignore
+
+  run "yarn add --dev prettier @prettier/plugin-ruby"
+
+  commit "install and configure prettier"
 end
 
 def create_readme
@@ -582,22 +613,11 @@ def setup_bootstrap_layout
 end
 
 def configure_heroku
-  create_file "bin/setup_heroku" do
-    <<~EOL.strip
-      set -e
-
-      apt-get update -yq
-      apt-get install apt-transport-https python3-software-properties -y
-
-      curl https://cli-assets.heroku.com/install.sh | sh
-
-      gem install dpl
-    EOL
+  if non_compliant_heroku_app_name?(app_name)
+    @heroku_project_name = ask("Name of Heroku project?", default: heroku_compliant_name)
+  else
+    @heroku_project_name = app_name
   end
-
-  chmod "bin/setup_heroku", 0755
-
-  @heroku_project_name = ask("Name of Heroku project?", default: app_name)
 
   while non_compliant_heroku_app_name?(@heroku_project_name)
     say "Heroku project names must start with a letter and can only contain lowercase letters, " \
@@ -639,17 +659,28 @@ def configure_github
   # replace with (gh api repos/:owner/:repo).[:full_name].slice('/').first => stephaneliu
   @github_username = "stephaneliu" #ask("What is your username for Github?", default: "stephaneliu")
   run "gh repo create"
-  configure_github_ci
+  configure_github_ci_cd
+
+  run("open https://github.com/#{@github_username}/#{app_name}/settings/secrets")
+  run("open https://dashboard.heroku.com/account")
+  ask("Create a RAILS_MASTER_KEY, HEROKU_EMAIL, and HEROKU_API_KEY in browser (cat config/master.key | pbcopy). Hit ENTER to continue", default: "ENTER")
+
+  commit("Chore: Add github CI/CD")
+  git push: "--set-upstream origin master"
 end
 
-def configure_github_ci
-  create_file ".github/workflows/ci.yml" do
+def configure_github_ci_cd
+  create_file ".github/workflows/ci_cd.yml" do
     <<~EOL.strip
-      name: CI
+      name: Test and deploy
+
       on: [push, pull_request]
+
       jobs:
         test:
           runs-on: ubuntu-latest
+
+          needs: lint
 
           services:
             db:
@@ -687,7 +718,7 @@ def configure_github_ci
                 restore-keys: |
                   ${{ runner.os }}-gems-
 
-            - name: Build and run tests
+            - name: Run tests
               env:
                 PGUSER: postgres
                 PG_PASSWORD: postgres
@@ -701,14 +732,115 @@ def configure_github_ci
                 bundle install --jobs 4 --retry 3
                 bundle exec rails db:prepare
                 bundle exec rspec spec
+
+        deploy_staging:
+          runs-on: ubuntu-latest
+
+          needs: test
+          if: github.ref == 'refs/heads/master'
+
+          steps:
+            - name: Checkout repo
+              uses: actions/checkout@v2
+
+            - name: Deploy #{@heroku_project_name}-stagging
+              env:
+                HEROKU_API_KEY: ${{ SECRETS.HEROKU_API_KEY }}
+              run: |
+                sudo apt-get -yqq install apt-transport-https python3-software-properties
+                curl https://cli-assets.heroku.com/install.sh | sudo sh
+                sudo gem install dpl
+                sudo dpl --provider=heroku --app=#{@heroku_project_name}-staging --api-key=$HEROKU_API_KEY
+                heroku run rake db:migrate --exit-code --app #{@heroku_project_name}-staging
+
+        deploy_production:
+          runs-on: ubuntu-latest
+
+          needs: test
+          if: startsWith(github.ref, 'refs/tags/v')
+
+          steps:
+            - name: Checkout repo
+              uses: actions/checkout@v2
+
+            - name: Deploy #{@heroku_project_name}-production
+              env:
+                HEROKU_API_KEY: ${{ SECRETS.HEROKU_API_KEY }}
+              run: |
+                sudo apt-get -yqq install apt-transport-https python3-software-properties
+                curl https://cli-assets.heroku.com/install.sh | sudo sh
+                sudo gem install dpl
+                sudo dpl --provider=heroku --app=#{@heroku_project_name}-production --api-key=$HEROKU_API_KEY
+                heroku run rake db:migrate --exit-code --app #{@heroku_project_name}-production
     EOL
   end
 
-  run("open https://github.com/#{@github_username}/#{app_name}/settings/secrets")
-  ask("Create a RAILS_MASTER_KEY in browser (cat config/master.key | pbcopy). Hit ENTER to continue", default: "[ENTER]")
+  create_file ".github/workflows/rubocop.yml" do
+    <<~EOL.strip
+      name: Rubocop
 
-  commit("Chore: Add github CI")
-  git push: "--set-upstream origin master"
+      on: [push, pull_request]
+
+      jobs:
+        style:
+          runs-on: ubuntu-latest
+
+          steps:
+            - name: Checkout repo
+              uses: actions/checkout@v2
+
+            - name: Setup Ruby
+              uses: actions/setup-ruby@v1
+              with:
+                ruby-version: #{ENV.fetch("RUBY_VERSION") { "2.6.x" }}
+
+            - name: Cache Bundler
+              uses: actions/cache@v2
+              with:
+                path: vendor/bundle
+                key: ${{ runner.os }}-gems-${{ hashFiles('**/Gemfile.lock') }}
+                restore-keys: |
+                  ${{ runner.os }}-gems-
+
+            - name: Install Rubocop
+              run: |
+                gem install bundler
+                bundle config path vendor/bundle
+                bundle install --jobs 4 --retry 3
+
+            - name: Run Rubocop
+              env:
+                RAILS_ENV: test
+                RlAILS_MASTER_KEY: ${{ secrets.RAILS_MASTER_KEY }}
+              run: |
+                bundle exec rubocop
+    EOL
+  end
+
+  create_file ".github/workflows/prettier.yml" do
+    <<~EOL.strip
+      name: Prettier
+
+      on: [push, pull_request]
+
+      jobs:
+        lint:
+          runs-on: ubuntu-latest
+
+          steps:
+            - name: Checkout repo
+              uses: actions/checkout@v2
+
+            - name: Install yarn
+              uses: borales/actions-yarn@v2.0.0
+              with:
+                cmd: install
+
+            - name: Run Prettier
+              run: |
+                sudo yarn install
+                sudo yarn prettier --check '**/*.rb'
+    EOL
 end
 
 def non_compliant_heroku_app_name?(name)
@@ -731,16 +863,21 @@ end
 apply_template
 
 after_bundle do
-  # configure_heroku if yes?("Create new heroku instance?")
+  configure_heroku
   configure_github
 
   say "Run rubocop"
-  run "bundle exec rubocop --format simple --auto-correct"
+  run "bundle exec rubocop --format simple --auto-correct; 0"
   commit("Fix: Fix rubocop violations")
 
-  say "Run tests"
-  run "bundle exec rspec" # should have no errors
+  say 'Run prettier'
+  run 'yarn add prettier'
+  run "yarn prettier --write '**/*.rb'"
+  commit("Fix: Prettier")
 
-  run "bundle exec rubocop --format simple"
+  say "Run tests"
+  run "bundle exec rspec; 0" # should have no errors
+
+  run "bundle exec rubocop --format simple; 0"
   say "TODO: Remember to CLEAN UP GEMFILE", :red
 end
