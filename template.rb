@@ -90,7 +90,7 @@ def customize_gems
     gem "rubocop-rspec"
   end
 
-  run "bundle install"
+  run "bundle install && bundle update"
   run "annotate_gem"
 
   commit("Chore: Customize gems")
@@ -186,8 +186,8 @@ def configure_puma
   puma_config = <<-EOL
     # frozen_string_literal: true
 
-    workers_count = Integer(ENV.fetch('WEB_CONCURRENCY') { 2 })
-    threads_count = ENV.fetch('RAILS_MAX_THREADS') { 5 }
+    workers_count = Integer(ENV.fetch('WEB_CONCURRENCY', 2))
+    threads_count = ENV.fetch('RAILS_MAX_THREADS', 5)
 
     workers workers_count
     threads threads_count, threads_count
@@ -195,8 +195,8 @@ def configure_puma
     preload_app!
 
     rackup      DefaultRackup
-    port        ENV.fetch('PORT')      { 3000 }
-    environment ENV.fetch('RAILS_ENV') { 'development' }
+    port        ENV.fetch('PORT', 3000)
+    environment ENV.fetch('RAILS_ENV', 'development')
 
     on_worker_boot do
       ActiveRecord::Base.establish_connection
@@ -243,10 +243,11 @@ def configure_guard
 
     group :red_green_refactor, halt_on_fail: true do
       rspec_options = {
-        cmd: 'bin/rspec -f doc',
+        cmd: 'bin/rspec -f doc --next-failure',
         run_all: {
           cmd: 'COVERAGE=true DISABLE_SPRING=true bin/rspec -f doc'
         },
+        all_on_start: true
         all_after_pass: true
       }
 
@@ -296,9 +297,9 @@ def configure_guard
       end
 
       rubocop_options = {
-        all_on_start: false,
-        cli: '--rails --parallel',
-        # keep_failed: true,
+        all_on_start: true,
+        cli: '--parallel',
+        keep_failed: true,
       }
 
       guard :rubocop, rubocop_options do
@@ -339,6 +340,7 @@ def configure_rubocop
       - 'test_prof/rubocop'
 
     AllCops:
+      NewCops: enable
       Exclude:
         - 'db/schema.rb'
         - 'node_modules/**/*'
