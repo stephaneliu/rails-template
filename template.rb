@@ -674,8 +674,6 @@ def configure_github_ci_cd
         rubocop:
           runs-on: ubuntu-latest
 
-          needs: lint
-
           steps:
             - name: Checkout repo
               uses: actions/checkout@v2
@@ -708,8 +706,6 @@ def configure_github_ci_cd
 
         test:
           runs-on: ubuntu-latest
-
-          needs: rubocop
 
           services:
             db:
@@ -765,7 +761,7 @@ def configure_github_ci_cd
         deploy_staging:
           runs-on: ubuntu-latest
 
-          needs: test
+          needs: [lint, rubocop, test]
           if: github.ref == 'refs/heads/master'
 
           steps:
@@ -785,7 +781,7 @@ def configure_github_ci_cd
         deploy_production:
           runs-on: ubuntu-latest
 
-          needs: test
+          needs: [lint, rubocop, test]
           if: startsWith(github.ref, 'refs/tags/v')
 
           steps:
