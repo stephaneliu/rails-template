@@ -17,5 +17,3 @@ Create a '~/.railsrc' file and add the following:
 
 TODO
 * Use gh api to create RAILS_MASTER_KEY, HEROKU_API_KEY secret
-* Add prettier linting
-* Add rubocop check

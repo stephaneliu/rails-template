@@ -40,11 +40,10 @@ def customize_gems
   say "Customizing gems"
 
   gem "awesome_print"
-  gem "bootstrap", "~>4.1.0"
-  gem "devise"
-  gem "font-awesome-rails"
-  gem "haml-rails"
-  gem "jquery-rails"
+  gem "bootstrap", "~>4.5"
+  gem "devise", "~> 4.7", ">= 4.7.1"
+  gem "font-awesome-sass", "~> 5.13"
+  gem "haml-rails", "~> 2.0"
   gem "pg"
   gem "rack-timeout"
 
@@ -76,10 +75,9 @@ def customize_gems
     # gem "capybara", "~> 2.13"
     gem "factory_bot_rails"
     gem "faker"
-    gem "rails-controller-testing" # dependency of shoulda-matchers
     gem "rspec-rails"
     gem "selenium-webdriver" # system test using selenium_chrome_headless
-    gem "shoulda-matchers", "4.0.0.rc1"
+    gem "shoulda-matchers", "~> 4.4"
     gem "simplecov"
     gem "test-prof"
   end
@@ -92,8 +90,6 @@ def customize_gems
 
   run "bundle install && bundle update"
   run "annotate_gem"
-
-  commit("Chore: Customize gems")
 end
 
 def configure_rspec
@@ -118,22 +114,16 @@ def configure_rspec
   uncomment_lines("spec/spec_helper.rb", /disable_monkey_patching!/)
   uncomment_lines("spec/spec_helper.rb", /config\.filter_run_when_matching/)
   uncomment_lines("spec/spec_helper.rb", /config\.example_status_persistence_file_path/)
-
-  commit("Chore: Configure rspec")
 end
 
 def configure_devise 
   generate "devise:install"
-
-  commit("Chore: Configure devise")
 end
 
 def configure_annotate
   generate "annotate:install"
 
   append_to_file "Rakefile", "Annotate.load_tasks if Rails.env.development?"
-
-  commit("Chore: Configure annotate")
 end
 
 def configure_reek
@@ -158,8 +148,6 @@ def configure_reek
   EOL
 
   create_file ".reek", reek_config
-
-  commit("Chore: Configure reek")
 end
 
 def configure_shoulda_matchers
@@ -173,8 +161,6 @@ def configure_shoulda_matchers
   EOL
 
   create_file "spec/support/shoulda_matchers.rb", shoulda_matchers
-
-  commit("Chore: Configure shoulda_matchers")
 end
 
 def configure_puma
@@ -209,8 +195,6 @@ def configure_puma
 
   remove_file "config/puma.rb"
   create_file "config/puma.rb", puma_config
-
-  commit("Chore: Configure puma")
 end
 
 def configure_guard
@@ -248,7 +232,7 @@ def configure_guard
         run_all: {
           cmd: 'COVERAGE=true DISABLE_SPRING=true bin/rspec -f doc'
         },
-        all_on_start: true
+        all_on_start: true,
         all_after_pass: true
       }
 
@@ -300,19 +284,22 @@ def configure_guard
       rubocop_options = {
         all_on_start: true,
         cli: '--parallel',
-        keep_failed: true,
+        keep_failed: true
       }
 
       guard :rubocop, rubocop_options do
         watch(%r{.+\.rb$})
         watch(%r{(?:.+/)?\.rubocop(?:_todo)?\.yml$}) { |m| File.dirname(m[0]) }
       end
+
+      guard 'reek' do
+        watch(%r{.+\.rb$})
+        watch('.reek')
+      end
     end
   EOL
 
   create_file "Guardfile", guard_setup
-
-  commit("Chore: Configure guard")
 end
 
 def configure_spring
@@ -330,8 +317,6 @@ def configure_git
   EOL
 
   append_to_file ".gitignore", git_ignore
-
-  commit("Chore: Configure git")
 end
 
 def configure_rubocop
@@ -343,6 +328,7 @@ def configure_rubocop
     AllCops:
       NewCops: enable
       Exclude:
+        - 'bin/*'l
         - 'db/schema.rb'
         - 'node_modules/**/*'
         - 'vendor/**/*'
@@ -444,12 +430,10 @@ def configure_rubocop
   EOL
 
   create_file ".rubocop.yml", rubocop_config
-
-  commit("Chore: Configure rubocop")
 end
 
 def configure_prettier
-  pretterrc = <<~EOL.strip
+  prettierrc = <<~EOL.strip
     {
       "preferSingleQuotes": false,
       "printWidth": 100
@@ -472,16 +456,11 @@ def configure_prettier
   create_file ".prettierignore", prettier_ignore
 
   run "yarn add --dev prettier @prettier/plugin-ruby"
-
-  commit "install and configure prettier"
 end
 
 def create_readme
   create_file "README"
-
-  commit("Chore: Create readme")
 end
-
 
 def configure_rails_defaults
   generator_configs = <<-EOL
@@ -497,7 +476,6 @@ def configure_rails_defaults
   EOL
 
   application generator_configs
-  commit("Chore: Configure rails defaults")
 end
 
 def create_database
@@ -523,7 +501,6 @@ def add_welcome_page
 
   create_file "app/views/welcome/index.html.haml", welcome
   route "root 'welcome#index'"
-  commit("Feature: Add welcome")
 end
 
 def customize_database
@@ -555,14 +532,11 @@ def customize_database
 
   commit("Chore: Customize database")
 end
-
 def setup_bootstrap
   say "Bootstrapping Bootstrap"
   setup_bootstrap_css
   setup_bootstrap_javascript
   setup_bootstrap_layout
-
-  commit("Chore: Configure Bootstrap")
 end
 
 def setup_bootstrap_css
@@ -616,10 +590,10 @@ def setup_bootstrap_layout
 end
 
 def configure_heroku
+  @heroku_project_name = app_name
+
   if non_compliant_heroku_app_name?(app_name)
     @heroku_project_name = ask("Name of Heroku project?", default: heroku_compliant_name)
-  else
-    @heroku_project_name = app_name
   end
 
   while non_compliant_heroku_app_name?(@heroku_project_name)
@@ -680,10 +654,62 @@ def configure_github_ci_cd
       on: [push, pull_request]
 
       jobs:
-        test:
+        lint:
+          runs-on: ubuntu-latest
+
+          steps:
+            - name: Checkout repo
+              uses: actions/checkout@v2
+
+            - name: Install yarn
+              uses: borales/actions-yarn@v2.0.0
+              with:
+                cmd: install
+
+            - name: Run Prettier
+              run: |
+                sudo yarn install
+                sudo yarn prettier --check '**/*.rb'
+
+        rubocop:
           runs-on: ubuntu-latest
 
           needs: lint
+
+          steps:
+            - name: Checkout repo
+              uses: actions/checkout@v2
+
+            - name: Setup Ruby
+              uses: actions/setup-ruby@v1
+              with:
+                ruby-version: #{ENV.fetch("RUBY_VERSION") { "2.6.x" }}
+
+            - name: Cache Bundler
+              uses: actions/cache@v2
+              with:
+                path: vendor/bundle
+                key: ${{ runner.os }}-gems-${{ hashFiles('**/Gemfile.lock') }}
+                restore-keys: |
+                  ${{ runner.os }}-gems-
+
+            - name: Install Rubocop
+              run: |
+                gem install bundler
+                bundle config path vendor/bundle
+                bundle install --jobs 4 --retry 3
+
+            - name: Run Rubocop
+              env:
+                RAILS_ENV: test
+                RlAILS_MASTER_KEY: ${{ secrets.RAILS_MASTER_KEY }}
+              run: |
+                bundle exec rubocop
+
+        test:
+          runs-on: ubuntu-latest
+
+          needs: rubocop
 
           services:
             db:
@@ -777,73 +803,6 @@ def configure_github_ci_cd
                 heroku run rake db:migrate --exit-code --app #{@heroku_project_name}-production
     EOL
   end
-
-  create_file ".github/workflows/rubocop.yml" do
-    <<~EOL.strip
-      name: Rubocop
-
-      on: [push, pull_request]
-
-      jobs:
-        style:
-          runs-on: ubuntu-latest
-
-          steps:
-            - name: Checkout repo
-              uses: actions/checkout@v2
-
-            - name: Setup Ruby
-              uses: actions/setup-ruby@v1
-              with:
-                ruby-version: #{ENV.fetch("RUBY_VERSION") { "2.6.x" }}
-
-            - name: Cache Bundler
-              uses: actions/cache@v2
-              with:
-                path: vendor/bundle
-                key: ${{ runner.os }}-gems-${{ hashFiles('**/Gemfile.lock') }}
-                restore-keys: |
-                  ${{ runner.os }}-gems-
-
-            - name: Install Rubocop
-              run: |
-                gem install bundler
-                bundle config path vendor/bundle
-                bundle install --jobs 4 --retry 3
-
-            - name: Run Rubocop
-              env:
-                RAILS_ENV: test
-                RlAILS_MASTER_KEY: ${{ secrets.RAILS_MASTER_KEY }}
-              run: |
-                bundle exec rubocop
-    EOL
-  end
-
-  create_file ".github/workflows/prettier.yml" do
-    <<~EOL.strip
-      name: Prettier
-
-      on: [push, pull_request]
-
-      jobs:
-        lint:
-          runs-on: ubuntu-latest
-
-          steps:
-            - name: Checkout repo
-              uses: actions/checkout@v2
-
-            - name: Install yarn
-              uses: borales/actions-yarn@v2.0.0
-              with:
-                cmd: install
-
-            - name: Run Prettier
-              run: |
-                sudo yarn install
-                sudo yarn prettier --check '**/*.rb'
-    EOL
 end
 
 def non_compliant_heroku_app_name?(name)
@@ -870,17 +829,15 @@ after_bundle do
   configure_github
 
   say "Run rubocop"
-  run "bundle exec rubocop --format simple --auto-correct; 0"
-  commit("Fix: Fix rubocop violations")
-
-  say 'Run prettier'
-  run 'yarn add prettier'
-  run "yarn prettier --write '**/*.rb'"
-  commit("Fix: Prettier")
+  say "bundle exec rubocop --format simple --auto-correct", :green
 
   say "Run tests"
-  run "bundle exec rspec; 0" # should have no errors
+  say "bundle exec rspec", :green
 
-  run "bundle exec rubocop --format simple; 0"
+  say "Run prettier"
+  say "yarn prettier --write '**/*.rb'", :green
+
+  commit "Chore: Apply custom Rails template"
+
   say "TODO: Remember to CLEAN UP GEMFILE", :red
 end
