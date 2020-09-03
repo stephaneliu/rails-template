@@ -117,6 +117,7 @@ def configure_rspec
   prepend_to_file "spec/spec_helper.rb", simplecov_config
   uncomment_lines("spec/spec_helper.rb", /disable_monkey_patching!/)
   uncomment_lines("spec/spec_helper.rb", /config\.filter_run_when_matching/)
+  uncomment_lines("spec/spec_helper.rb", /config\.example_status_persistence_file_path/)
 
   commit("Chore: Configure rspec")
 end
