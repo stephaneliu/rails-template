@@ -4,7 +4,6 @@ def apply_template
 
   customize_gems
   configure_rspec
-  configure_shoulda_matchers
   configure_devise
   configure_annotate
   configure_reek
@@ -122,6 +121,30 @@ def configure_rspec
   EOL
 
   insert_into_file("spec/rails_helper.rb", content, before: "RSpec.configure do")
+
+  configure_shoulda_matchers
+  configure_factory_bot
+end
+
+def configure_shoulda_matchers
+  shoulda_matchers = <<~EOL.strip
+    Shoulda::Matchers.configure do |config|
+      config.integrate do |with|
+        with.test_framework :rspec
+        with.library :rails
+      end
+    end
+  EOL
+
+  create_file "spec/support/shoulda_matchers.rb", shoulda_matchers
+end
+
+def configure_factory_bot
+  factory_bot = <<~EOL.strip
+    RSpec.configure { |config| config.include FactoryBot::Syntax::Methods }
+  EOL
+
+  create_file "spec/support/factory_bot.rb", factory_bot
 end
 
 def configure_devise 
@@ -156,19 +179,6 @@ def configure_reek
   EOL
 
   create_file ".reek", reek_config
-end
-
-def configure_shoulda_matchers
-  shoulda_matchers = <<~EOL.strip
-    Shoulda::Matchers.configure do |config|
-      config.integrate do |with|
-        with.test_framework :rspec
-        with.library :rails
-      end
-    end
-  EOL
-
-  create_file "spec/support/shoulda_matchers.rb", shoulda_matchers
 end
 
 def configure_puma
