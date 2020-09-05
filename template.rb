@@ -12,6 +12,7 @@ def apply_template
   configure_spring
   configure_git
   configure_rubocop
+  configure_haml_lint
   configure_prettier
   configure_rails_defaults
 
@@ -448,6 +449,16 @@ def configure_rubocop
   EOL
 
   create_file ".rubocop.yml", rubocop_config
+end
+
+def configure_haml_lint
+  haml_lint = <<~EOL.strip
+    linters:
+      FinalNewline:
+        enabled: false
+  EOL
+
+  create_file ".haml-lint.yml", haml_lint
 end
 
 def configure_prettier
