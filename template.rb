@@ -78,7 +78,7 @@ def customize_gems
     gem "rspec-rails"
     gem "selenium-webdriver" # system test using selenium_chrome_headless
     gem "shoulda-matchers", "~> 4.4"
-    gem "simplecov"
+    gem "simplecov", require: false
     gem "test-prof"
   end
 
@@ -96,18 +96,33 @@ def configure_rspec
   generate "rspec:install"
 
   simplecov_config = <<~EOL
-    require 'simplecov'
 
     if ENV['COVERAGE'] == 'true'
+      require 'simplecov'
+
       SimpleCov.start 'rails' do
         minimum_coverage 95
         maximum_coverage_drop 1
 
-        add_filter do |source|
-          source.lines.count < 8
-        end
+        # https://github.com/simplecov-ruby/simplecov#branch-coverage-ruby--25
+        enable_coverage :branch
 
-        add_filter "/vendor/"
+        min_line_count = proc { |source_file| source_file.lines.count < 11 }
+        add_filter [min_line_count, /vendor/]
+
+        add_group "Commands", "app/commands"
+        add_group "Crons", "app/crons"
+        add_group "Decorators", "app/decorators"
+        add_group "Finders", "app/finders"
+        add_group "Forms", "app/forms"
+        add_group "Jobs", "app/jobs"
+        add_group "Nulls", "app/nulls"
+        add_group "Policies", "app/policies"
+        add_group "Presenters", "app/presenters"
+        add_group "Queries", "app/queries"
+        add_group "Services", "app/services"
+        add_group "Validators", "app/validators"
+        add_group "Long files" { |file| file.lines.count > 300 }
       end
     end
   EOL
