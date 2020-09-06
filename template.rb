@@ -133,7 +133,7 @@ def configure_rspec
   uncomment_lines("spec/spec_helper.rb", /example_status_persistence_file_path/)
 
   content = <<~EOL
-    Dir[Rails.root.join("spec/support/**/*.rb")].each { |f| require f }\n\n
+    Dir[Rails.root.join("spec/support/**/*.rb")].sort.each { |f| require f }\n\n
   EOL
 
   insert_into_file("spec/rails_helper.rb", content, before: "RSpec.configure do")
@@ -144,6 +144,8 @@ end
 
 def configure_shoulda_matchers
   shoulda_matchers = <<~EOL.strip
+    # frozen_string_literal: true
+    
     Shoulda::Matchers.configure do |config|
       config.integrate do |with|
         with.test_framework :rspec
@@ -157,6 +159,8 @@ end
 
 def configure_factory_bot
   factory_bot = <<~EOL.strip
+    # frozen_string_literal: true
+    
     RSpec.configure { |config| config.include FactoryBot::Syntax::Methods }
   EOL
 
@@ -175,26 +179,36 @@ end
 
 def configure_reek
   reek_config = <<~EOL.strip
-    "app/controllers":
+    detectors:
       IrresponsibleModule:
         enabled: false
-      NestedIterators:
-        max_allowed_nesting: 2
-      UnusedPrivateMethod:
-        enabled: false
-      InstanceVariableAssumption:
-        enabled: false
-    "app/helpers":
-      IrresponsibleModule:
-        enabled: false
-      UtilityFunction:
-        enabled: false
-    "app/mailers":
-      InstanceVariableAssumption:
-        enabled: false
+    directories:
+      "app/controllers":
+        NestedIterators:
+          max_allowed_nesting: 2
+        UnusedPrivateMethod:
+          enabled: false
+        InstanceVariableAssumption:
+          enabled: false
+      "app/helpers":
+        UtilityFunction:
+          enabled: false
+      "app/mailers":
+        InstanceVariableAssumption:
+          enabled: false
+      "config":
+        UncommunicativeVariableName:
+          enabled: false
+      "db/migrate":
+        FeatureEnvy:
+          enabled: false
+        UncommunicativeVariableName:
+          enabled: false
+    exclude_paths:
+      - node_modules
   EOL
 
-  create_file ".reek", reek_config
+  create_file ".reek.yml", reek_config
 end
 
 def configure_puma
