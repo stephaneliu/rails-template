@@ -77,7 +77,6 @@ def customize_gems
     gem "faker"
     gem "rspec-rails"
     gem "selenium-webdriver" # system test using selenium_chrome_headless
-    gem "shoulda-matchers", "~> 4.4"
     gem "simplecov", require: false
     gem "test-prof"
   end
@@ -86,6 +85,7 @@ def customize_gems
     gem "pry-byebug"
     gem "pry-rails"
     gem "rubocop-rspec"
+    gem "shoulda-matchers", "~> 4.4"
   end
 
   run "bundle install && bundle update"
@@ -691,9 +691,11 @@ def configure_heroku
 end
 
 def configure_github
-  # replace with (gh api repos/:owner/:repo).[:full_name].slice('/').first => stephaneliu
-  @github_username = "stephaneliu" #ask("What is your username for Github?", default: "stephaneliu")
-  run "gh repo create"
+  options = []
+  @github_username = ask("What is your username for Github?", default: "stephaneliu")
+  options << "--public" if yes?("Create public Github repo?")
+
+  run "gh repo create #{options.join(" ")}"
   configure_github_ci_cd
 
   run("open https://github.com/#{@github_username}/#{app_name}/settings/secrets")
