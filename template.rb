@@ -77,7 +77,8 @@ def customize_gems
     gem "faker"
     gem "rspec-rails"
     gem "selenium-webdriver" # system test using selenium_chrome_headless
-    gem "simplecov", require: false
+    gem "simplecov"
+    gem "simplecov-lcov"
     gem "test-prof"
   end
 
@@ -89,7 +90,7 @@ def customize_gems
   end
 
   run "bundle install && bundle update"
-  run "annotate_gem"
+  run "annotate_gem --inline --website-only"
 end
 
 def configure_rspec
@@ -97,10 +98,21 @@ def configure_rspec
 
   simplecov_config = <<~EOL
 
-    if ENV['COVERAGE'] == 'true'
+    if ENV["COVERAGE"]
       require 'simplecov'
+      require "simplecov-lcov"
 
       SimpleCov.start 'rails' do
+        if ENV["CI"]
+          SimpleCov::Formatter::LcovFormatter.config do |config|
+            config.report_with_single_file = true
+            config.lcov_file_name = "lcov.info"
+          end
+          formatter SimpleCov::Formatter::LcovFormatter
+        else
+          SimpleCov::Formatter::HTMLFormatter
+        end
+
         minimum_coverage 95
         maximum_coverage_drop 1
 
@@ -131,6 +143,10 @@ def configure_rspec
   uncomment_lines("spec/spec_helper.rb", /disable_monkey/)
   uncomment_lines("spec/spec_helper.rb", /filter_run_when_matching/)
   uncomment_lines("spec/spec_helper.rb", /example_status_persistence_file_path/)
+  insert_into_file("spec/spec_helper.rb",
+                   "config.default_formatter = \"doc\" if config.files_to_run.size < 11",
+                   after: "RSpec.configure do")
+  insert_into_file("spec/spec_helper.rb", "config.order = :random", after: "RSpec.configure do")
 
   content = <<~EOL
     Dir[Rails.root.join("spec/support/**/*.rb")].sort.each { |f| require f }\n\n
@@ -161,6 +177,8 @@ def configure_factory_bot
   factory_bot = <<~EOL.strip
     # frozen_string_literal: true
     
+    require "factory_bot"
+
     RSpec.configure { |config| config.include FactoryBot::Syntax::Methods }
   EOL
 
@@ -169,6 +187,7 @@ end
 
 def configure_devise 
   generate "devise:install"
+  generate "devise User"
 end
 
 def configure_annotate
@@ -264,9 +283,9 @@ def configure_guard
 
     group :rgr, halt_on_fail: true do
       rspec_options = {
-        cmd: 'bin/rspec -f doc --next-failure --color',
+        cmd: 'bin/rspec --next-failure --color',
         run_all: {
-          cmd: 'COVERAGE=true DISABLE_SPRING=true bin/rspec -f doc'
+          cmd: 'COVERAGE=true CI=true DISABLE_SPRING=true bin/rspec'
         },
         all_on_start: true,
         all_after_pass: true
@@ -359,9 +378,8 @@ def configure_git
     .DS_Store
     gems.tags
     tags
-    ./coverage
-    ./.env
-    ./config/initializers/*
+    /coverage/*
+    /.env
   EOL
 
   append_to_file ".gitignore", git_ignore
@@ -758,9 +776,6 @@ def configure_github_ci_cd
                 bundle install --jobs 4 --retry 3
 
             - name: Run Rubocop
-              env:
-                RAILS_ENV: test
-                RlAILS_MASTER_KEY: ${{ secrets.RAILS_MASTER_KEY }}
               run: |
                 bundle exec rubocop
 
@@ -817,6 +832,12 @@ def configure_github_ci_cd
                 bundle install --jobs 4 --retry 3
                 bundle exec rails db:prepare
                 bundle exec rspec spec
+
+            - name: Coveralls
+              uses: coverallsapp/github-action@master
+              with:
+                github-token: ${{ secrets.GITHUB_TOKEN }}
+                path-to-lcov: "./coverage/lcov/lcov.info"
 
         deploy_staging:
           runs-on: ubuntu-latest
