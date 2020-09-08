@@ -75,7 +75,6 @@ def customize_gems
     # gem "capybara", "~> 2.13"
     gem "factory_bot_rails"
     gem "faker"
-    gem "rspec-rails"
     gem "selenium-webdriver" # system test using selenium_chrome_headless
     gem "simplecov"
     gem "simplecov-lcov"
@@ -85,6 +84,7 @@ def customize_gems
   gem_group :development, :test do
     gem "pry-byebug"
     gem "pry-rails"
+    gem "rspec-rails"
     gem "rubocop-rspec"
     gem "shoulda-matchers", "~> 4.4"
   end
