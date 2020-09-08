@@ -154,8 +154,16 @@ def configure_rspec
 
   insert_into_file("spec/rails_helper.rb", content, before: "RSpec.configure do")
 
+  apply_rspec_workarounds
   configure_shoulda_matchers
   configure_factory_bot
+end
+
+def apply_rspec_workarounds
+  # Issue with Rails request tests blocking www.example.com host
+  # See - https://github.com/rails/rails/issues/37474
+  insert_into_file("config/environments/development.rb", "config.hosts << \"www.example.com\"",
+                   after: "Rails.application.configure do")
 end
 
 def configure_shoulda_matchers
