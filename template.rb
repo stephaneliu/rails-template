@@ -226,13 +226,9 @@ def configure_reek
       "config":
         UncommunicativeVariableName:
           enabled: false
-      "db/migrate":
-        FeatureEnvy:
-          enabled: false
-        UncommunicativeVariableName:
-          enabled: false
     exclude_paths:
       - node_modules
+      - db/migrate
   EOL
 
   create_file ".reek.yml", reek_config
@@ -291,9 +287,10 @@ def configure_guard
 
     group :rgr, halt_on_fail: true do
       rspec_options = {
-        cmd: 'bin/rspec --next-failure --color',
+        cmd: 'bin/rspec --color',
+        failed_mode: :keep,
         run_all: {
-          cmd: 'COVERAGE=true CI=true DISABLE_SPRING=true bin/rspec'
+          cmd: 'COVERAGE=true DISABLE_SPRING=true bin/rspec'
         },
         all_on_start: true,
         all_after_pass: true
@@ -769,23 +766,30 @@ def configure_github_ci_cd
               with:
                 ruby-version: #{ENV.fetch("RUBY_VERSION") { "2.6.x" }}
 
-            - name: Cache Bundler
-              uses: actions/cache@v2
-              with:
-                path: vendor/bundle
-                key: ${{ runner.os }}-gems-${{ hashFiles('**/Gemfile.lock') }}
-                restore-keys: |
-                  ${{ runner.os }}-gems-
-
             - name: Install Rubocop
-              run: |
-                gem install bundler
-                bundle config path vendor/bundle
-                bundle install --jobs 4 --retry 3
+              run: gem install rubocop rubocop-rspec
 
             - name: Run Rubocop
+              run: rubocop
+
+        reek:
+          runs-on: ubuntu-latest
+
+          steps:
+            - name: Checkout repo
+              uses: actions/checkout@v2
+
+            - name: Setup Ruby
+              uses: actions/setup-ruby@v1
+              with:
+                ruby-version: 2.6.6
+
+            - name: Install Reek
               run: |
-                bundle exec rubocop
+                gem install reek
+
+            - name: Run Reek
+              run: reek *
 
         test:
           runs-on: ubuntu-latest
@@ -826,6 +830,20 @@ def configure_github_ci_cd
                 restore-keys: |
                   ${{ runner.os }}-gems-
 
+            - name: Install dependencies
+              run: |
+                sudo apt-get -yqq install libpq-dev
+                yarn install
+                gem install bundler
+                bundle config path vendor/bundle
+                bundle install --jobs 4 --retry 3
+
+            - name: Setup database
+              env:
+                PGUSER: postgres
+                PG_PASSWORD: postgres
+              run: bundle exec rails db:prepare
+
             - name: Run tests
               env:
                 PGUSER: postgres
@@ -834,12 +852,7 @@ def configure_github_ci_cd
                 RAILS_ENV: test
                 RAILS_MASTER_KEY: ${{ secrets.RAILS_MASTER_KEY }}
               run: |
-                sudo apt-get -yqq install libpq-dev
-                gem install bundler
-                bundle config path vendor/bundle
-                bundle install --jobs 4 --retry 3
-                bundle exec rails db:prepare
-                bundle exec rspec spec
+                COVERAGE=true CI=true bundle exec rspec spec
 
             - name: Coveralls
               uses: coverallsapp/github-action@master
@@ -857,13 +870,16 @@ def configure_github_ci_cd
             - name: Checkout repo
               uses: actions/checkout@v2
 
-            - name: Deploy #{@heroku_project_name}-stagging
-              env:
-                HEROKU_API_KEY: ${{ SECRETS.HEROKU_API_KEY }}
+            - name: Install dependencies
               run: |
                 sudo apt-get -yqq install apt-transport-https python3-software-properties
                 curl https://cli-assets.heroku.com/install.sh | sudo sh
                 sudo gem install dpl
+
+            - name: Deploy #{@heroku_project_name}-stagging
+              env:
+                HEROKU_API_KEY: ${{ SECRETS.HEROKU_API_KEY }}
+              run: |
                 sudo dpl --provider=heroku --app=#{@heroku_project_name}-staging --api-key=$HEROKU_API_KEY
                 heroku run rake db:migrate --exit-code --app #{@heroku_project_name}-staging
 
@@ -877,13 +893,16 @@ def configure_github_ci_cd
             - name: Checkout repo
               uses: actions/checkout@v2
 
-            - name: Deploy #{@heroku_project_name}-production
-              env:
-                HEROKU_API_KEY: ${{ SECRETS.HEROKU_API_KEY }}
+            - name: Install dependencies
               run: |
                 sudo apt-get -yqq install apt-transport-https python3-software-properties
                 curl https://cli-assets.heroku.com/install.sh | sudo sh
                 sudo gem install dpl
+
+            - name: Deploy #{@heroku_project_name}-production
+              env:
+                HEROKU_API_KEY: ${{ SECRETS.HEROKU_API_KEY }}
+              run: |
                 sudo dpl --provider=heroku --app=#{@heroku_project_name}-production --api-key=$HEROKU_API_KEY
                 heroku run rake db:migrate --exit-code --app #{@heroku_project_name}-production
     EOL
