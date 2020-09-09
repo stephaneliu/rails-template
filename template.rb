@@ -287,7 +287,7 @@ def configure_guard
 
     group :rgr, halt_on_fail: true do
       rspec_options = {
-        cmd: 'bin/rspec --color',
+        cmd: 'bin/rspec --color --format doc',
         failed_mode: :keep,
         run_all: {
           cmd: 'COVERAGE=true DISABLE_SPRING=true bin/rspec'
