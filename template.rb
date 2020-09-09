@@ -144,7 +144,7 @@ def configure_rspec
   uncomment_lines("spec/spec_helper.rb", /filter_run_when_matching/)
   uncomment_lines("spec/spec_helper.rb", /example_status_persistence_file_path/)
   insert_into_file("spec/spec_helper.rb",
-                   "config.default_formatter = \"doc\" if config.files_to_run.size < 11",
+                   "config.default_formatter = \"doc\" if config.files_to_run.one?",
                    after: "RSpec.configure do")
   insert_into_file("spec/spec_helper.rb", "config.order = :random", after: "RSpec.configure do")
 
