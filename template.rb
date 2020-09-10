@@ -78,7 +78,6 @@ def customize_gems
     gem "selenium-webdriver" # system test using selenium_chrome_headless
     gem "simplecov"
     gem "simplecov-lcov"
-    gem "test-prof"
   end
 
   gem_group :development, :test do
@@ -276,16 +275,12 @@ def configure_guard
       watch(%r{^app/javascript/\w+/*})
     end
 
-    # Guard-HamlLint supports a lot options with default values:
-    # all_on_start: true        # Check all files at Guard startup. default: true
-    # haml_dires: ['app/views'] # Check Directories. default: 'app/views' or '.'
-    # cli: '--fail-fast --no-color' # Additional command line options to haml-lint.
-    guard :haml_lint, all_on_start: false do
-      watch(%r{.+\.html.*\.haml$})
-      watch(%r{(?:.+/)?\.haml-lint\.yml$}) { |m| File.dirname(m[0]) }
-    end
-
     group :rgr, halt_on_fail: true do
+      guard :haml_lint, all_on_start: false do
+        watch(%r{.+\.html.*\.haml$})
+        watch(%r{(?:.+/)?\.haml-lint\.yml$}) { |m| File.dirname(m[0]) }
+      end
+
       rspec_options = {
         cmd: 'bin/rspec --color --format doc',
         failed_mode: :keep,
@@ -508,6 +503,8 @@ def configure_haml_lint
     linters:
       FinalNewline:
         enabled: false
+      LineLength:
+        max: 100
   EOL
 
   create_file ".haml-lint.yml", haml_lint
@@ -754,6 +751,35 @@ def configure_github_ci_cd
                 sudo yarn install
                 sudo yarn prettier --check '**/*.rb'
 
+        haml-lint:
+          runs-on: ubuntu-latest
+
+          steps:
+            - name: Checkout repo
+              uses: actions/checkout@v2
+
+            - name: Setup Ruby
+              uses: actions/setup-ruby@v1
+              with:
+                ruby-version: 2.6.6
+
+            - name: Cache Bundler
+              uses: actions/cache@v2
+              with:
+                path: vendor/bundle
+                key: ${{ runner.os }}-gems-${{ hashFiles('**/Gemfile.lock') }}
+                restore-keys: |
+                  ${{ runner.os }}-gems-
+
+            - name: Install dependencies
+              run: |
+                gem install bundler
+                bundle config path vendor/bundle
+                bundle install --jobs 4 --retry 3
+
+            - name: Run Haml Linter
+              run: bundle exec haml-lint app/views
+
         rubocop:
           runs-on: ubuntu-latest
 
@@ -766,11 +792,22 @@ def configure_github_ci_cd
               with:
                 ruby-version: #{ENV.fetch("RUBY_VERSION") { "2.6.x" }}
 
-            - name: Install Rubocop
-              run: gem install rubocop rubocop-rspec
+            - name: Cache Bundler
+              uses: actions/cache@v2
+              with:
+                path: vendor/bundle
+                key: ${{ runner.os }}-gems-${{ hashFiles('**/Gemfile.lock') }}
+                restore-keys: |
+                  ${{ runner.os }}-gems-
+
+            - name: Install dependencies
+              run: |
+                gem install bundler
+                bundle config path vendor/bundle
+                bundle install --jobs 4 --retry 3
 
             - name: Run Rubocop
-              run: rubocop
+              run: bundle exec rubocop
 
         reek:
           runs-on: ubuntu-latest
