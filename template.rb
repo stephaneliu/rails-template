@@ -741,6 +741,18 @@ def configure_github_ci_cd
             - name: Checkout repo
               uses: actions/checkout@v2
 
+            - name: Get yarn cache directory path
+              id: yarn-cache-dir-path
+              run: echo "::set-output name=dir::$(yarn config get cacheFolder)"
+
+            - uses: actions/cache@v2
+              id: yarn-cache # use this to check for `cache-hit` (`steps.yarn-cache.outputs.cache-hit != 'true'`)
+              with:
+                path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
+                key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+                restore-keys: |
+                  ${{ runner.os }}-yarn-)
+
             - name: Install yarn
               uses: borales/actions-yarn@v2.0.0
               with:
@@ -866,6 +878,18 @@ def configure_github_ci_cd
                 key: ${{ runner.os }}-gems-${{ hashFiles('**/Gemfile.lock') }}
                 restore-keys: |
                   ${{ runner.os }}-gems-
+
+            - name: Get yarn cache directory path
+              id: yarn-cache-dir-path
+              run: echo "::set-output name=dir::$(yarn config get cacheFolder)"
+
+            - uses: actions/cache@v2
+              id: yarn-cache # use this to check for `cache-hit` (`steps.yarn-cache.outputs.cache-hit != 'true'`)
+              with:
+                path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
+                key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+                restore-keys: |
+                  ${{ runner.os }}-yarn-)
 
             - name: Install dependencies
               run: |
