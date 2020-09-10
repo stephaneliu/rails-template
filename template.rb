@@ -745,7 +745,8 @@ def configure_github_ci_cd
               id: yarn-cache-dir-path
               run: echo "::set-output name=dir::$(yarn config get cacheFolder)"
 
-            - uses: actions/cache@v2
+            - name: Cache yarn
+              uses: actions/cache@v2
               id: yarn-cache # use this to check for `cache-hit` (`steps.yarn-cache.outputs.cache-hit != 'true'`)
               with:
                 path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
@@ -758,9 +759,11 @@ def configure_github_ci_cd
               with:
                 cmd: install
 
+            - name: Install yarn dependencies
+              run: sudo yarn install
+
             - name: Run Prettier
               run: |
-                sudo yarn install
                 sudo yarn prettier --check '**/*.rb'
 
         haml-lint:
@@ -871,6 +874,22 @@ def configure_github_ci_cd
               with:
                 cmd: install
 
+            - name: Get yarn cache directory path
+              id: yarn-cache-dir-path
+              run: echo "::set-output name=dir::$(yarn config get cacheFolder)"
+
+            - name: Cache yarn
+              uses: actions/cache@v2
+              id: yarn-cache # use this to check for `cache-hit` (`steps.yarn-cache.outputs.cache-hit != 'true'`)
+              with:
+                path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
+                key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+                restore-keys: |
+                  ${{ runner.os }}-yarn-)
+
+            - name: Install yarn dependencies
+              run: sudo yarn install
+
             - name: Cache Bundler
               uses: actions/cache@v2
               with:
@@ -879,22 +898,9 @@ def configure_github_ci_cd
                 restore-keys: |
                   ${{ runner.os }}-gems-
 
-            - name: Get yarn cache directory path
-              id: yarn-cache-dir-path
-              run: echo "::set-output name=dir::$(yarn config get cacheFolder)"
-
-            - uses: actions/cache@v2
-              id: yarn-cache # use this to check for `cache-hit` (`steps.yarn-cache.outputs.cache-hit != 'true'`)
-              with:
-                path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
-                key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
-                restore-keys: |
-                  ${{ runner.os }}-yarn-)
-
             - name: Install dependencies
               run: |
                 sudo apt-get -yqq install libpq-dev
-                yarn install
                 gem install bundler
                 bundle config path vendor/bundle
                 bundle install --jobs 4 --retry 3
