@@ -776,7 +776,7 @@ def configure_github_ci_cd
             - name: Setup Ruby
               uses: actions/setup-ruby@v1
               with:
-                ruby-version: 2.6.6
+                ruby-version: #{ENV.fetch("RUBY_VERSION") { "2.7.x" }}
 
             - name: Cache Bundler
               uses: actions/cache@v2
@@ -805,7 +805,7 @@ def configure_github_ci_cd
             - name: Setup Ruby
               uses: actions/setup-ruby@v1
               with:
-                ruby-version: #{ENV.fetch("RUBY_VERSION") { "2.6.x" }}
+                ruby-version: #{ENV.fetch("RUBY_VERSION") { "2.7.x" }}
 
             - name: Cache Bundler
               uses: actions/cache@v2
@@ -834,7 +834,7 @@ def configure_github_ci_cd
             - name: Setup Ruby
               uses: actions/setup-ruby@v1
               with:
-                ruby-version: 2.6.6
+                ruby-version: #{ENV.fetch("RUBY_VERSION") { "2.7.x" }}
 
             - name: Install Reek
               run: |
