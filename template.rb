@@ -774,9 +774,7 @@ def configure_github_ci_cd
               uses: actions/checkout@v2
 
             - name: Setup Ruby
-              uses: actions/setup-ruby@v1
-              with:
-                ruby-version: #{ENV.fetch("RUBY_VERSION") { "2.7.x" }}
+              uses: ruby/setup-ruby@v1
 
             - name: Cache Bundler
               uses: actions/cache@v2
@@ -803,9 +801,7 @@ def configure_github_ci_cd
               uses: actions/checkout@v2
 
             - name: Setup Ruby
-              uses: actions/setup-ruby@v1
-              with:
-                ruby-version: #{ENV.fetch("RUBY_VERSION") { "2.7.x" }}
+              uses: ruby/setup-ruby@v1
 
             - name: Cache Bundler
               uses: actions/cache@v2
@@ -832,16 +828,38 @@ def configure_github_ci_cd
               uses: actions/checkout@v2
 
             - name: Setup Ruby
-              uses: actions/setup-ruby@v1
-              with:
-                ruby-version: #{ENV.fetch("RUBY_VERSION") { "2.7.x" }}
+              uses: ruby/setup-ruby@v1
 
             - name: Install Reek
               run: |
                 gem install reek
 
             - name: Run Reek
-              run: reek *
+              run: |
+                reek *
+
+        security:
+          runs-on: ubuntu-latest
+
+          steps:
+            - name: Checkout repo
+              uses: actions/checkout@v2
+
+            - name: Setup Ruby
+              uses: ruby/setup-ruby@v1
+
+            - name: Install Brakeman
+              run: gem install brakeman
+
+            - name: Run Brakeman
+              run: |
+                brakeman -f json > tmp/brakeman.json || exit 0
+
+            - name: Brakeman Report
+              uses: devmasx/brakeman-linter-action@v1.0.0
+              env:
+                REPORT_PATH: tmp/brakeman.json
+                GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
         test:
           runs-on: ubuntu-latest
@@ -865,9 +883,7 @@ def configure_github_ci_cd
               uses: actions/checkout@v2
 
             - name: Setup Ruby
-              uses: actions/setup-ruby@v1
-              with:
-                ruby-version: #{ENV.fetch("RUBY_VERSION") { "2.6.x" }}
+              uses: ruby/setup-ruby@v1
 
             - name: Install yarn
               uses: borales/actions-yarn@v2.0.0
@@ -920,6 +936,12 @@ def configure_github_ci_cd
                 RAILS_MASTER_KEY: ${{ secrets.RAILS_MASTER_KEY }}
               run: |
                 COVERAGE=true CI=true bundle exec rspec spec
+
+            - name: Create coverage artifact
+              uses: action/upload-artifact@v2
+              with:
+                name: code-coverage
+                path: coverage/
 
             - name: Coveralls
               uses: coverallsapp/github-action@master
