@@ -934,7 +934,7 @@ def configure_github_ci_cd
         deploy_staging:
           runs-on: ubuntu-latest
 
-          needs: [lint, rubocop, test]
+          needs: [prettier, haml-lint, rubocop, reek, security, test]
           if: github.ref == 'refs/heads/master'
 
           steps:
@@ -957,7 +957,7 @@ def configure_github_ci_cd
         deploy_production:
           runs-on: ubuntu-latest
 
-          needs: [lint, rubocop, test]
+          needs: [prettier, haml-lint, rubocop, reek, security, test]
           if: startsWith(github.ref, 'refs/tags/v')
 
           steps:
