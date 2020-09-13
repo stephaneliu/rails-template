@@ -734,7 +734,7 @@ def configure_github_ci_cd
       on: [push, pull_request]
 
       jobs:
-        lint:
+        prettier:
           runs-on: ubuntu-latest
 
           steps:
