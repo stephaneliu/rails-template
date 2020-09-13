@@ -14,6 +14,7 @@ def apply_template
   configure_rubocop
   configure_haml_lint
   configure_prettier
+  configure_livereload
   configure_rails_defaults
 
   create_database
@@ -50,15 +51,18 @@ def customize_gems
   gem_group :development do
     gem "annotate"
     gem "annotate_gem"
-    gem "better_errors"
     gem "guard"
     gem "guard-brakeman", require: false
+    gem "guard-haml_lint"
+    gem "guard-livereload", require: false
+    gem "guard-process"
     gem "guard-reek"
     gem "guard-rspec"
     gem "guard-rubocop"
     gem "html2haml"
     gem "meta_request"
     gem "prettier"
+    gem "rack-livereload"
     gem "rails_layout"
     gem "rubocop"
     gem "spring"
@@ -67,8 +71,6 @@ def customize_gems
     gem "terminal-notifier"
     gem "terminal-notifier-guard"
     gem "web-console", ">= 3.3.0"
-    gem 'guard-haml_lint'
-    gem 'guard-process'
   end
 
   gem_group :test do
@@ -153,16 +155,8 @@ def configure_rspec
 
   insert_into_file("spec/rails_helper.rb", content, before: "RSpec.configure do")
 
-  apply_rspec_workarounds
   configure_shoulda_matchers
   configure_factory_bot
-end
-
-def apply_rspec_workarounds
-  # Issue with Rails request tests blocking www.example.com host
-  # See - https://github.com/rails/rails/issues/37474
-  insert_into_file("config/environments/development.rb", "config.hosts << \"www.example.com\"",
-                   after: "Rails.application.configure do")
 end
 
 def configure_shoulda_matchers
@@ -270,6 +264,44 @@ end
 def configure_guard
   guard_setup = <<~EOL.strip
     # frozen_string_literal: true
+
+    guard 'livereload' do
+      extensions = {
+        css: :css,
+        scss: :css,
+        sass: :css,
+        js: :js,
+        coffee: :js,
+        html: :html,
+        png: :png,
+        gif: :gif,
+        jpg: :jpg,
+        jpeg: :jpeg
+      }
+
+      rails_view_exts = %w(erb haml slim)
+
+      # file types LiveReload may optimize refresh for
+      compiled_exts = extensions.values.uniq
+      watch(%r{public/.+\.(#{compiled_exts * '|'})})
+
+      extensions.each do |ext, type|
+        watch(%r{
+              (?:app|vendor)
+              (?:/assets/\w+/(?<path>[^.]+) # path+base without extension
+               (?<ext>\.#{ext})) # matching extension (must be first encountered)
+              (?:\.\w+|$) # other extensions
+              }x) do |m|
+          path = m[1]
+          "/assets/#{path}.#{type}"
+        end
+      end
+
+      # file needing a full reload of the page anyway
+      watch(%r{app/views/.+\.(#{rails_view_exts * '|'})$})
+      watch(%r{app/helpers/.+\.rb})
+      watch(%r{config/locales/.+\.yml})
+    end
 
     guard 'process', name: 'Webpacker', command: 'bin/webpack' do
       watch(%r{^app/javascript/\w+/*})
@@ -534,6 +566,13 @@ def configure_prettier
   create_file ".prettierignore", prettier_ignore
 
   run "yarn add --dev prettier @prettier/plugin-ruby"
+end
+
+def configure_livereload
+
+  insert_into_file("config/environments/development.rb",
+                   "config.middleware.insert_after ActionDispatch::Static, Rack::LiveReload",
+                   after: "Rails.application.configure do")
 end
 
 def create_readme
@@ -1003,6 +1042,7 @@ after_bundle do
   configure_heroku
   configure_github
 
+  run "annotate_gem --inline --website-only"
   say "Run rubocop"
   say "bundle exec rubocop --format simple --auto-correct", :green
 
