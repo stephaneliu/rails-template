@@ -775,14 +775,8 @@ def configure_github_ci_cd
 
             - name: Setup Ruby
               uses: ruby/setup-ruby@v1
-
-            - name: Cache Bundler
-              uses: actions/cache@v2
               with:
-                path: vendor/bundle
-                key: ${{ runner.os }}-gems-${{ hashFiles('**/Gemfile.lock') }}
-                restore-keys: |
-                  ${{ runner.os }}-gems-
+                bundler-cache: true
 
             - name: Install dependencies
               run: |
@@ -802,14 +796,8 @@ def configure_github_ci_cd
 
             - name: Setup Ruby
               uses: ruby/setup-ruby@v1
-
-            - name: Cache Bundler
-              uses: actions/cache@v2
               with:
-                path: vendor/bundle
-                key: ${{ runner.os }}-gems-${{ hashFiles('**/Gemfile.lock') }}
-                restore-keys: |
-                  ${{ runner.os }}-gems-
+                bundler-cache: true
 
             - name: Install dependencies
               run: |
@@ -882,9 +870,6 @@ def configure_github_ci_cd
             - name: Checkout repo
               uses: actions/checkout@v2
 
-            - name: Setup Ruby
-              uses: ruby/setup-ruby@v1
-
             - name: Install yarn
               uses: borales/actions-yarn@v2.0.0
               with:
@@ -906,13 +891,10 @@ def configure_github_ci_cd
             - name: Install yarn dependencies
               run: sudo yarn install
 
-            - name: Cache Bundler
-              uses: actions/cache@v2
+            - name: Setup Ruby
+              uses: ruby/setup-ruby@v1
               with:
-                path: vendor/bundle
-                key: ${{ runner.os }}-gems-${{ hashFiles('**/Gemfile.lock') }}
-                restore-keys: |
-                  ${{ runner.os }}-gems-
+                bundler-cache: true
 
             - name: Install dependencies
               run: |
