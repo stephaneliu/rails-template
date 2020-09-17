@@ -1,10 +1,10 @@
 ## Installation
 
 Requirements:
-* Postgresql service running
+* Postgresql installed and running
+* Github account 
 * Heroku CLI client installed.
   `brew install heroku`
-* Github account with SSH configured
 * gh install
   `brew install gh`
 

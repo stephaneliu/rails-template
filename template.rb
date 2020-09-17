@@ -26,7 +26,7 @@ def apply_template
 end
 
 def validate_dependencies
-  return true if(system("which gh"))
+  return true if system("which gh")
 
   say "gh (Github CLI) not installed"
   exit 1
@@ -135,7 +135,9 @@ def configure_rspec
         add_group "Queries", "app/queries"
         add_group "Services", "app/services"
         add_group "Validators", "app/validators"
-        add_group "Long files" { |file| file.lines.count > 300 }
+        add_group "Long files" do |file|
+          file.lines.count > 300
+        end
       end
     end
   EOL
@@ -144,13 +146,15 @@ def configure_rspec
   uncomment_lines("spec/spec_helper.rb", /disable_monkey/)
   uncomment_lines("spec/spec_helper.rb", /filter_run_when_matching/)
   uncomment_lines("spec/spec_helper.rb", /example_status_persistence_file_path/)
-  insert_into_file("spec/spec_helper.rb",
-                   "config.default_formatter = \"doc\" if config.files_to_run.one?",
-                   after: "RSpec.configure do")
-  insert_into_file("spec/spec_helper.rb", "config.order = :random", after: "RSpec.configure do")
+
+  config_content = <<~EOL
+    \n  config.default_formatter = \"doc\" if config.files_to_run.one?
+      config.order = :random
+  EOL
+  insert_into_file("spec/spec_helper.rb", config_content, after: "RSpec.configure do |config|")
 
   content = <<~EOL
-    Dir[Rails.root.join("spec/support/**/*.rb")].sort.each { |f| require f }\n\n
+    \nDir[Rails.root.join("spec/support/**/*.rb")].sort.each { |f| require f }\n
   EOL
 
   insert_into_file("spec/rails_helper.rb", content, before: "RSpec.configure do")
@@ -262,7 +266,7 @@ def configure_puma
 end
 
 def configure_guard
-  guard_setup = <<~EOL.strip
+  guard_setup = <<~'EOL'
     # frozen_string_literal: true
 
     guard 'livereload' do
@@ -426,7 +430,7 @@ def configure_rubocop
     AllCops:
       NewCops: enable
       Exclude:
-        - 'bin/*'l
+        - 'bin/*'
         - 'db/schema.rb'
         - 'node_modules/**/*'
         - 'vendor/**/*'
@@ -571,7 +575,7 @@ end
 def configure_livereload
 
   insert_into_file("config/environments/development.rb",
-                   "config.middleware.insert_after ActionDispatch::Static, Rack::LiveReload",
+                   "\n  config.middleware.insert_after ActionDispatch::Static, Rack::LiveReload",
                    after: "Rails.application.configure do")
 end
 
@@ -959,7 +963,7 @@ def configure_github_ci_cd
                 COVERAGE=true CI=true bundle exec rspec spec
 
             - name: Create coverage artifact
-              uses: action/upload-artifact@v2
+              uses: actions/upload-artifact@v2
               with:
                 name: code-coverage
                 path: coverage/
