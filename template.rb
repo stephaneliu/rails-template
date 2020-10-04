@@ -16,13 +16,12 @@ def apply_template
   configure_prettier
   configure_livereload
   configure_rails_defaults
-
   create_database
   create_readme
-
-  add_welcome_page
+  add_static_page
   customize_database
-  # setup_bootstrap
+
+  add_tailwind
 end
 
 def validate_dependencies
@@ -90,8 +89,104 @@ def customize_gems
     gem "shoulda-matchers", "~> 4.4"
   end
 
-  run "bundle install && bundle update"
-  run "annotate_gem --inline --website-only"
+  run 'bundle install && bundle update'
+  run 'annotate_gem --inline --website-only'
+end
+
+def add_tailwind
+  after_bundle do
+    run 'yarn add tailwindcss'
+    run 'yarn add @fullhuman/postcss-purgecss'
+
+    run 'rm postcss.config.js'
+    create_file 'postcss.config.js' do
+      <<~EOL
+        let environment = {
+          plugins: [
+            require('tailwindcss')('./app/javascript/stylesheets/tailwind.config.js'),
+            require('postcss-import'),
+            require('postcss-flexbugs-fixes'),
+            require('postcss-preset-env')({
+              autoprefixer: {
+              flexbox: 'no-2009'
+              },
+              stage: 3
+            })
+          ]
+        };
+
+        // Only run PurgeCSS in production
+        if (process.env.RAILS_ENV === 'production') {
+          environment.plugins.push(
+            require('@fullhuman/postcss-purgecss')({
+              content: [
+                './app/**/*.html.erb',
+                './app/helpers/**/*.rb',
+                './app/javascript/**/*.js',
+                './app/javascript/**/*.vue'
+              ],
+              defaultExtractor: (content) => content.match(/[A-Za-z0-9-_:/]+/g) || []
+            })
+          );
+        }
+
+        module.exports = environment;
+      EOL
+    end
+
+    run 'mkdir -p app/javascript/stylesheets'
+    run 'npx tailwindcss init --full'
+    run 'mv ./tailwind.config.js app/javascript/stylesheets'
+
+    create_file 'app/javascript/stylesheets/application.scss' do
+      <<~EOL
+        @import "tailwindcss/base";
+        @import "tailwindcss/components";
+
+        /*! purgecss start ignore */
+
+        // custom components and styles here
+        @import "components/buttons";
+
+        /*! purgecss end ignore */
+
+        @import "tailwindcss/utilities";
+      EOL
+    end
+
+    append_to_file('app/javascript/packs/application.js') do
+      <<~EOL
+
+        // Tailwind CSS
+        import "stylesheets/application"
+      EOL
+    end
+
+    insert_into_file(
+      'app/views/layouts/application.html.erb',
+      before: "<%= javascript_pack_tag 'application'"
+    ) do
+      <<~EOL
+        <%= stylesheet_pack_tag 'application', 'data-turbolinks-track': 'reload' %>
+      EOL
+    end
+
+    gsub_file('app/views/layouts/application.html.erb', /\s*\<body\>/) do
+      <<~EOL
+
+          <body class="antialiased bg-gray-100">
+      EOL
+    end
+
+    run 'mkdir -p app/javascript/stylesheets/components'
+    create_file 'app/javascript/stylesheets/components/_buttons.scss' do
+      <<~EOL
+        .btn {
+          @apply px-3 py-2 text-base text-gray-800 bg-white border rounded;
+        }
+      EOL
+    end
+  end
 end
 
 def configure_rspec
@@ -573,10 +668,11 @@ def configure_prettier
 end
 
 def configure_livereload
-
-  insert_into_file("config/environments/development.rb",
-                   "\n  config.middleware.insert_after ActionDispatch::Static, Rack::LiveReload",
-                   after: "Rails.application.configure do")
+  insert_into_file(
+    'config/environments/development.rb',
+    "\n  config.middleware.insert_after ActionDispatch::Static, Rack::LiveReload",
+    after: 'Rails.application.configure do'
+  )
 end
 
 def create_readme
@@ -604,19 +700,16 @@ def create_database
   rails_command "db:migrate"
 end
 
-def add_welcome_page
-  say "Adding welcome page"
+def add_static_page
+  say 'Adding static page'
 
-  run "spring stop"
-  generate "controller welcome"
+  run 'spring stop'
+  generate 'controller static'
   welcome = <<~EOL.strip
-    %h1 Welcome
-    .jumbotron
-      %h1.display-4 Welcome!
-      %p.lead
-        The time now is
-        = Time.now
-      %hr.my-4
+    %h1.mt-4.tracking-wide.text-4xl.font-bold.text-center.text-blue-500.font-serif
+      The time now is
+      = Time.now
+      %hr
       %p Strike while the iron is hot!
   EOL
 
@@ -631,146 +724,101 @@ def customize_database
       encoding: unicode
       pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
       host: <%= ENV.fetch("PGHOST") { "localhost" } %>
-      password: <%= ENV.fetch("PG_PASSWORD") { ENV['#{app_name}_DATABASE_PASSWORD'] } %>
+      password: <%= ENV.fetch("PG_PASSWORD") { ENV['#{
+    app_name
+  }_DATABASE_PASSWORD'] } %>
       username: <%= ENV.fetch("PGUSER") { ENV["USER"] } %>
 
     development:
       <<: *default
-      database: #{app_name}_development
+      database: #{
+    app_name
+  }_development
 
     test:
       <<: *default
-      database: #{app_name}_test
+      database: #{
+    app_name
+  }_test
 
     production:
       <<: *default
-      database: #{app_name}_production
+      database: #{
+    app_name
+  }_production
       host: <%= ENV.fetch("PGHOST") { "localhost" } %>
   EOL
 
-  remove_file "config/database.yml"
-  create_file "config/database.yml", database_config
+  remove_file 'config/database.yml'
+  create_file 'config/database.yml', database_config
 
-  commit("Chore: Customize database")
-end
-def setup_bootstrap
-  say "Bootstrapping Bootstrap"
-  setup_bootstrap_css
-  setup_bootstrap_javascript
-  setup_bootstrap_layout
-end
-
-def setup_bootstrap_css
-  application_scss = <<~EOL.strip
-    /*
-    *= require_self
-    *= require_tree .
-    */
-    // Custom bootstrap variables must be set or imported *before* bootstrap.
-    @import "bootstrap";
-    @import "font-awesome";
-  EOL
-
-  git rm: "app/assets/stylesheets/application.css"
-  create_file "app/assets/stylesheets/application.scss", application_scss
-end
-
-def setup_bootstrap_javascript
-  bootstrap_required_js = <<~EOL
-    //= require jquery3
-    //= require popper
-    //= require bootstrap-sprockets
-
-  EOL
-
-  inject_into_file "app/assets/javascripts/application.js", \
-    bootstrap_required_js, \
-    before: "//= require_tree ."
-end
-
-def setup_bootstrap_layout
-  application_layout = <<~EOL.strip
-    !!!
-    %html{ lang: 'en' }
-      %head
-        %title #{app_name}
-        %meta{ charset: 'utf-8' }
-        %meta{ name: 'viewport', content: "width=device-width, initial-scale=1, shrink-to-fit=no" }
-        = csrf_meta_tags
-        = csp_meta_tag
-        = stylesheet_link_tag    'application', media: 'all', 'data-turbolinks-track': 'reload'
-        = javascript_include_tag 'application', 'data-turbolinks-track': 'reload'
-
-        %body
-          .container-fluid
-            = yield
-  EOL
-
-  git rm: "app/views/layouts/application.html.erb"
-  create_file "app/views/layouts/application.html.haml", application_layout
+  commit('Chore: Customize database')
 end
 
 def configure_heroku
   @heroku_project_name = app_name
 
   if non_compliant_heroku_app_name?(app_name)
-    @heroku_project_name = ask("Name of Heroku project?", default: heroku_compliant_name)
+    @heroku_project_name = ask('Name of Heroku project?', default: heroku_compliant_name)
   end
 
   while non_compliant_heroku_app_name?(@heroku_project_name)
-    say "Heroku project names must start with a letter and can only contain lowercase letters, " \
-      "numbers, and dashes."
+    say 'Heroku project names must start with a letter and can only contain lowercase letters, ' \
+          'numbers, and dashes.'
 
-    @heroku_project_name = ask("Name of Heroku project?", default: heroku_compliant_name)
+    @heroku_project_name = ask('Name of Heroku project?', default: heroku_compliant_name)
   end
 
-  say "Creating staging env on Heroku"
+  say 'Creating staging env on Heroku'
 
   run "heroku create #{@heroku_project_name}-staging"
 
-  say "Adding master key to heroku staging instance"
-  run "heroku config:set -a #{@heroku_project_name}-staging "\
-    "RAILS_MASTER_KEY=$(cat config/master.key)"
+  say 'Adding master key to heroku staging instance'
+  run "heroku config:set -a #{@heroku_project_name}-staging " \
+        'RAILS_MASTER_KEY=$(cat config/master.key)'
 
-  say "Creating production env on Heroku"
+  say 'Creating production env on Heroku'
   run "heroku create #{@heroku_project_name}-production"
-  say "Adding master key to heroku production instance"
-  run "heroku config:set -a #{@heroku_project_name}-production "\
-    "RAILS_MASTER_KEY=$(cat config/master.key)"
+  say 'Adding master key to heroku production instance'
+  run "heroku config:set -a #{@heroku_project_name}-production " \
+        'RAILS_MASTER_KEY=$(cat config/master.key)'
 
-  say "Enabling encryption master key in production environment", :yellow
-  uncomment_lines "config/environments/production.rb", /require_master_key/
+  say 'Enabling encryption master key in production environment', :yellow
+  uncomment_lines 'config/environments/production.rb', /require_master_key/
 
-  commit("Chore: Configure heroku")
-  git push: "heroku master"
-  run "heroku ps:scale web=1" # free tier
+  commit('Chore: Configure heroku')
+  git push: 'heroku master'
+  run 'heroku ps:scale web=1' # free tier
 
-  say "Adding papertrail logging/alerting - free tier", :yellow
+  say 'Adding papertrail logging/alerting - free tier', :yellow
   run "heroku addons:create papertrail:choklad -a #{@heroku_project_name}-production"
-  say "Opening papertrail dashboard", :yellow
+  say 'Opening papertrail dashboard', :yellow
   run "heroku addons:open papertrail -a #{@heroku_project_name}-production"
 
-  run "heroku open"
+  run 'heroku open'
 end
 
 def configure_github
   options = []
-  @github_username = ask("What is your username for Github?", default: "stephaneliu")
-  options << "--public" if yes?("Create public Github repo?")
+  @github_username = ask('What is your username for Github?', default: 'stephaneliu')
+  options << '--public' if yes?('Create public Github repo?')
 
-  run "gh repo create #{options.join(" ")}"
+  run "gh repo create #{options.join(' ')}"
   configure_github_ci_cd
 
   run("open https://github.com/#{@github_username}/#{app_name}/settings/secrets")
-  run("open https://dashboard.heroku.com/account")
-  ask("Create a RAILS_MASTER_KEY, HEROKU_EMAIL, and HEROKU_API_KEY in browser (cat config/master.key | pbcopy). Hit ENTER to continue", default: "ENTER")
+  run('open https://dashboard.heroku.com/account')
+  ask(
+    'Create a RAILS_MASTER_KEY, HEROKU_EMAIL, and HEROKU_API_KEY in browser (cat config/master.key | pbcopy). Hit ENTER to continue',
+    default: 'ENTER'
+  )
 
-  commit("Chore: Add github CI/CD")
-  git push: "--set-upstream origin master"
+  commit('Chore: Add github CI/CD')
+  git push: '--set-upstream origin master'
 end
 
 def configure_github_ci_cd
-  create_file ".github/workflows/ci_cd.yml" do
+  create_file '.github/workflows/ci_cd.yml' do
     <<~EOL.strip
       name: Test and deploy
 
