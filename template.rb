@@ -85,7 +85,7 @@ def customize_gems
     gem "pry-byebug"
     gem "pry-rails"
     gem "rspec-rails"
-    gem "rubocop-rspec"
+    gem "rubocop-rspec", require: false
     gem "shoulda-matchers", "~> 4.4"
   end
 
@@ -520,7 +520,6 @@ def configure_rubocop
   rubocop_config = <<~EOL
     require:
       - 'rubocop-rspec'
-      - 'test_prof/rubocop'
 
     AllCops:
       NewCops: enable
@@ -555,11 +554,6 @@ def configure_rubocop
 
     Rails:
       Enabled: true
-
-    RSpec/AggregateExamples:
-      Enabled: true
-      Include:
-        - 'spec/**/*.rb'
 
     RSpec/DescribeClass:
       Exclude:
@@ -1084,8 +1078,14 @@ def heroku_compliant_name
 end
 
 def commit(message)
-  git add: "."
-  git commit: "-m '#{message}'"
+  unless skip_git
+    git add: "."
+    git commit: "-m '#{message}'"
+  end
+end
+
+def skip_git
+  @no_commits ||= !ENV['SKIP_GIT'].nil?
 end
 
 apply_template
