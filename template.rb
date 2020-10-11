@@ -646,6 +646,8 @@ def configure_haml_lint
   EOL
 
   create_file ".haml-lint.yml", haml_lint
+
+  commit("Chore: Configure haml lint")
 end
 
 def configure_prettier
