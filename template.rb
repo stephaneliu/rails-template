@@ -523,6 +523,7 @@ def configure_git
     tags
     /coverage/*
     /.env
+    /node_modules
   EOL
 
   append_to_file ".gitignore", git_ignore
