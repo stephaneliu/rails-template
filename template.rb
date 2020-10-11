@@ -8,6 +8,7 @@ def apply_template
   configure_annotate
   configure_reek
   configure_puma
+  configure_rack_timeout
   configure_guard
   configure_spring
   configure_git
@@ -45,7 +46,7 @@ def customize_gems
   gem "font-awesome-sass", "~> 5.13"
   gem "haml-rails", "~> 2.0"
   gem "pg"
-  gem "rack-timeout"
+  gem "rack-timeout", require: "rack/timeout/base"
 
   gem_group :development do
     gem "annotate"
@@ -93,6 +94,7 @@ def customize_gems
   run 'annotate_gem --inline --website-only'
 end
 
+# https://web-crunch.com/posts/how-to-install-tailwind-css-using-ruby-on-rails#
 def add_tailwind
   after_bundle do
     run 'yarn add tailwindcss'
@@ -358,6 +360,16 @@ def configure_puma
 
   remove_file "config/puma.rb"
   create_file "config/puma.rb", puma_config
+end
+
+def configure_rack_timeout
+  rack_timeout_config = <<~EOL
+    if Rails.env.production?
+      Rails.application.config.middleware.insert_before Rack::Runtime, Rack::Timeout, service_timeout: 10
+    end
+  EOL
+
+  create_file "config/initializers/rack_timeout.rb", rack_timeout_config
 end
 
 def configure_guard
