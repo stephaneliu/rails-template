@@ -98,6 +98,8 @@ end
 def add_tailwind
   after_bundle do
     run 'yarn add tailwindcss'
+    run "yarn add @tailwindcss/ui"
+    run 'yarn add alpinejs'
     run 'yarn add @fullhuman/postcss-purgecss'
 
     run 'rm postcss.config.js'
@@ -140,6 +142,9 @@ def add_tailwind
     run 'npx tailwindcss init --full'
     run 'mv ./tailwind.config.js app/javascript/stylesheets'
 
+    # Add Tailwind ui
+    run "sed -i '' 's/plugins: \[]/plugins: \[ require("@tailwindcss\/ui") ]/g' app/javascript/stylesheets/tailwind.config.js"
+
     create_file 'app/javascript/stylesheets/application.scss' do
       <<~EOL
         @import "tailwindcss/base";
@@ -159,6 +164,7 @@ def add_tailwind
     append_to_file('app/javascript/packs/application.js') do
       <<~EOL
 
+        require("alpinejs")
         // Tailwind CSS
         import "stylesheets/application"
       EOL
@@ -189,6 +195,8 @@ def add_tailwind
       EOL
     end
   end
+
+  commit("Configure tailwind")
 end
 
 def configure_rspec
@@ -674,6 +682,7 @@ def configure_prettier
   create_file ".prettierignore", prettier_ignore
 
   run "yarn add --dev prettier @prettier/plugin-ruby"
+  commit("Chore: Configure prettier")
 end
 
 def configure_livereload
@@ -682,6 +691,8 @@ def configure_livereload
     "\n  config.middleware.insert_after ActionDispatch::Static, Rack::LiveReload",
     after: 'Rails.application.configure do'
   )
+
+  commit("Configure livereload")
 end
 
 def create_readme
